@@ -5,6 +5,10 @@ const { GoogleGenAI } = require("@google/genai");
 
 dotenv.config();
 
+/* =========================================================
+   APP
+========================================================= */
+
 const app = express();
 
 app.use(
@@ -17,147 +21,533 @@ app.use(
 
 app.use(express.json());
 
+/* =========================================================
+   PORT
+========================================================= */
+
 const PORT = process.env.PORT || 5000;
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+/* =========================================================
+   GEMINI
+========================================================= */
+
+const GEMINI_API_KEY =
+  process.env.GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
-  console.error("ERROR: GEMINI_API_KEY is missing.");
+  console.error(
+    "❌ GEMINI_API_KEY is missing."
+  );
 }
 
 const ai = new GoogleGenAI({
   apiKey: GEMINI_API_KEY,
 });
 
-/* =========================================================
-   GEMINI MODELS
-========================================================= */
-
-const PRIMARY_MODEL = "gemini-3.5-flash";
-const FALLBACK_MODEL = "gemini-3.1-flash-lite";
+/*
+ * Stable Gemini model.
+ */
+const GEMINI_MODEL = "gemini-3.5-flash";
 
 /* =========================================================
-   HELPER
+   HELPER - SLEEP
 ========================================================= */
 
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 /* =========================================================
-   GEMINI GENERATION WITH RETRY
+   HELPER - CLEAN JSON
 ========================================================= */
 
-async function generateWithRetry(prompt) {
-  const models = [
-    PRIMARY_MODEL,
-    FALLBACK_MODEL,
-  ];
+function cleanJsonText(text) {
+  if (!text) {
+    return "";
+  }
+
+  let cleaned = String(text).trim();
+
+  /*
+   * Remove Markdown code fences.
+   */
+
+  cleaned = cleaned.replace(
+    /^```json\s*/i,
+    ""
+  );
+
+  cleaned = cleaned.replace(
+    /^```\s*/i,
+    ""
+  );
+
+  cleaned = cleaned.replace(
+    /\s*```$/i,
+    ""
+  );
+
+  cleaned = cleaned.trim();
+
+  /*
+   * Find JSON object.
+   */
+
+  const firstBrace =
+    cleaned.indexOf("{");
+
+  const lastBrace =
+    cleaned.lastIndexOf("}");
+
+  if (
+    firstBrace !== -1 &&
+    lastBrace !== -1 &&
+    lastBrace > firstBrace
+  ) {
+    cleaned =
+      cleaned.substring(
+        firstBrace,
+        lastBrace + 1
+      );
+  }
+
+  return cleaned.trim();
+}
+
+/* =========================================================
+   HELPER - NORMALIZE DEVOTIONAL
+========================================================= */
+
+function normalizeDevotional(data) {
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+    throw new Error(
+      "Gemini returned an invalid devotional object."
+    );
+  }
+
+  const devotional = {
+    title:
+      typeof data.title === "string"
+        ? data.title.trim()
+        : "",
+
+    hook:
+      typeof data.hook === "string"
+        ? data.hook.trim()
+        : "",
+
+    verse:
+      typeof data.verse === "string"
+        ? data.verse.trim()
+        : "",
+
+    reference:
+      typeof data.reference === "string"
+        ? data.reference.trim()
+        : "",
+
+    reflection:
+      typeof data.reflection === "string"
+        ? data.reflection.trim()
+        : "",
+
+    prayer:
+      typeof data.prayer === "string"
+        ? data.prayer.trim()
+        : "",
+  };
+
+  /*
+   * Validate required fields.
+   */
+
+  if (!devotional.title) {
+    throw new Error(
+      "Gemini returned incomplete devotional data: title missing."
+    );
+  }
+
+  if (!devotional.verse) {
+    throw new Error(
+      "Gemini returned incomplete devotional data: verse missing."
+    );
+  }
+
+  if (!devotional.reference) {
+    throw new Error(
+      "Gemini returned incomplete devotional data: reference missing."
+    );
+  }
+
+  if (!devotional.reflection) {
+    throw new Error(
+      "Gemini returned incomplete devotional data: reflection missing."
+    );
+  }
+
+  if (!devotional.prayer) {
+    throw new Error(
+      "Gemini returned incomplete devotional data: prayer missing."
+    );
+  }
+
+  return devotional;
+}
+
+/* =========================================================
+   GENERATE DEVOTIONAL
+========================================================= */
+
+async function generateDevotional({
+  theme,
+  reference,
+  language,
+}) {
+  const prompt = `
+You are a Christian devotional writer for a church ministry.
+
+Create today's Daily Bread devotional.
+
+THEME:
+${theme || "Not provided"}
+
+BIBLE REFERENCE:
+${reference || "Not provided"}
+
+LANGUAGE:
+${language}
+
+
+IMPORTANT LANGUAGE RULE:
+
+If the language is Telugu:
+
+- Write ALL fields naturally in Telugu.
+- Use proper Telugu grammar.
+- Use natural Christian Telugu.
+- Do NOT translate English word-for-word.
+- Do NOT unnecessarily mix English and Telugu.
+
+If the language is English:
+
+- Write all fields in natural English.
+
+If the language is English + Telugu:
+
+- Write naturally in both languages.
+
+
+TITLE:
+
+Create a short, meaningful and spiritually powerful title.
+
+Prefer 2-5 words.
+
+
+HOOK:
+
+Create one short sentence introducing today's spiritual message.
+
+
+BIBLE VERSE:
+
+If a Bible reference was provided, use that exact Bible reference.
+
+Provide the correct Bible verse associated with that reference.
+
+Do NOT invent a Bible quotation.
+
+If no Bible reference was provided, choose an appropriate Bible verse and provide its correct reference.
+
+Keep the verse reasonably short for a church social-media Daily Bread poster.
+
+
+REFLECTION:
+
+Write a short but spiritually deep reflection.
+
+Approximately 35-55 words.
+
+The reflection must:
+
+- Focus on one clear biblical truth.
+- Be personally applicable.
+- Be spiritually meaningful.
+- Be suitable for a church Daily Bread post.
+- Avoid generic motivational language.
+- Avoid repeating the verse word-for-word.
+- Avoid unnecessary explanation.
+
+
+PRAYER:
+
+Write a short heartfelt Christian prayer.
+
+Approximately 30-50 words.
+
+The prayer should naturally connect with the devotional message.
+
+
+TONE:
+
+Biblical.
+Peaceful.
+Encouraging.
+Humble.
+Christ-centered.
+Suitable for church ministry.
+
+
+VERY IMPORTANT:
+
+Return ONLY valid JSON.
+
+Do not use Markdown.
+
+Do not use code fences.
+
+Do not add explanations.
+
+Do not add text before or after the JSON.
+
+Use EXACTLY this structure:
+
+{
+  "title": "short title",
+  "hook": "short hook",
+  "verse": "Bible verse text",
+  "reference": "Bible reference",
+  "reflection": "short reflection",
+  "prayer": "short prayer"
+}
+`;
+
+  const maxAttempts = 3;
 
   let lastError = null;
 
-  for (const model of models) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        console.log(
-          `Gemini request | model=${model} | attempt=${attempt}`
+  for (
+    let attempt = 1;
+    attempt <= maxAttempts;
+    attempt++
+  ) {
+    try {
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        `Gemini request`
+      );
+
+      console.log(
+        `Model: ${GEMINI_MODEL}`
+      );
+
+      console.log(
+        `Attempt: ${attempt}/${maxAttempts}`
+      );
+
+      console.log(
+        "========================================"
+      );
+
+      /*
+       * IMPORTANT:
+       *
+       * No responseSchema.
+       * No responseFormat.
+       * No temperature.
+       *
+       * This avoids SDK/model configuration
+       * compatibility problems.
+       */
+
+      const response =
+        await ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: prompt,
+        });
+
+      const rawText =
+        response.text?.trim();
+
+      console.log(
+        "----------------------------------------"
+      );
+
+      console.log(
+        "Gemini raw response:"
+      );
+
+      console.log(rawText);
+
+      console.log(
+        "----------------------------------------"
+      );
+
+      if (!rawText) {
+        throw new Error(
+          "Gemini returned an empty response."
         );
-
-        const response =
-          await ai.models.generateContent({
-            model,
-            contents: prompt,
-            config: {
-              responseMimeType: "application/json",
-            },
-          });
-
-        const text = response.text?.trim();
-
-        if (!text) {
-          throw new Error(
-            "Gemini returned an empty response."
-          );
-        }
-
-        console.log(
-          `Gemini success | model=${model} | attempt=${attempt}`
-        );
-
-        return text;
-      } catch (error) {
-        lastError = error;
-
-        const status =
-          error?.status ||
-          error?.code ||
-          error?.response?.status;
-
-        const message =
-          error?.message || "";
-
-        console.error(
-          `Gemini failed | model=${model} | attempt=${attempt}`
-        );
-
-        console.error(
-          "Status:",
-          status
-        );
-
-        console.error(
-          "Message:",
-          message
-        );
-
-        /*
-         * Retry only temporary availability /
-         * rate-limit type failures.
-         */
-        const isTemporary =
-          status === 503 ||
-          status === 429 ||
-          message.includes("503") ||
-          message.includes("UNAVAILABLE") ||
-          message.includes("high demand") ||
-          message.includes("overloaded") ||
-          message.includes("429");
-
-        if (!isTemporary) {
-          throw error;
-        }
-
-        /*
-         * Exponential backoff:
-         *
-         * attempt 1 → 2 seconds
-         * attempt 2 → 4 seconds
-         * attempt 3 → 8 seconds
-         */
-        if (attempt < 3) {
-          const waitTime =
-            Math.pow(2, attempt) * 1000;
-
-          console.log(
-            `Waiting ${waitTime}ms before retry...`
-          );
-
-          await sleep(waitTime);
-        }
       }
+
+      /*
+       * Clean JSON.
+       */
+
+      const jsonText =
+        cleanJsonText(rawText);
+
+      console.log(
+        "Cleaned JSON:"
+      );
+
+      console.log(jsonText);
+
+      /*
+       * Parse JSON.
+       */
+
+      let parsed;
+
+      try {
+        parsed =
+          JSON.parse(jsonText);
+      } catch (parseError) {
+        console.error(
+          "❌ JSON parsing failed."
+        );
+
+        console.error(
+          "Raw Gemini response:"
+        );
+
+        console.error(rawText);
+
+        console.error(
+          "Cleaned response:"
+        );
+
+        console.error(jsonText);
+
+        throw new Error(
+          "Gemini returned invalid JSON."
+        );
+      }
+
+      /*
+       * Validate.
+       */
+
+      const devotional =
+        normalizeDevotional(parsed);
+
+      console.log(
+        "✅ Devotional generated successfully."
+      );
+
+      return devotional;
+
+    } catch (error) {
+      lastError = error;
+
+      console.error(
+        "========================================"
+      );
+
+      console.error(
+        `❌ Gemini attempt ${attempt} failed`
+      );
+
+      console.error(
+        "Message:",
+        error?.message
+      );
+
+      console.error(
+        "Status:",
+        error?.status
+      );
+
+      console.error(
+        "Code:",
+        error?.code
+      );
+
+      console.error(
+        "Full error:",
+        error
+      );
+
+      console.error(
+        "========================================"
+      );
+
+      const status =
+        error?.status ||
+        error?.code ||
+        error?.response?.status;
+
+      const message =
+        error?.message || "";
+
+      /*
+       * Retry temporary Gemini errors.
+       */
+
+      const temporaryError =
+        status === 408 ||
+        status === 429 ||
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        message.includes(
+          "UNAVAILABLE"
+        ) ||
+        message.includes(
+          "high demand"
+        ) ||
+        message.includes(
+          "overloaded"
+        ) ||
+        message.includes(
+          "temporarily"
+        ) ||
+        message.includes(
+          "RESOURCE_EXHAUSTED"
+        );
+
+      if (
+        temporaryError &&
+        attempt < maxAttempts
+      ) {
+        const waitTime =
+          attempt === 1
+            ? 2000
+            : 4000;
+
+        console.log(
+          `Retrying in ${waitTime}ms...`
+        );
+
+        await sleep(waitTime);
+
+        continue;
+      }
+
+      /*
+       * Don't retry permanent errors.
+       */
+
+      throw error;
     }
-
-    /*
-     * Primary model failed after all retries.
-     * Move to fallback model.
-     */
-    console.warn(
-      `Primary model ${model} unavailable.`
-    );
-
-    console.warn(
-      "Trying next model..."
-    );
   }
 
   throw lastError;
@@ -167,27 +557,39 @@ async function generateWithRetry(prompt) {
    ROOT
 ========================================================= */
 
-app.get("/", (req, res) => {
-  res.json({
-    message:
-      "Daily Bread Studio API is running",
-  });
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.json({
+      success: true,
+      message:
+        "Daily Bread Studio API is running",
+      model:
+        GEMINI_MODEL,
+    });
+  }
+);
 
 /* =========================================================
    HEALTH CHECK
 ========================================================= */
 
-app.get("/health", (req, res) => {
-  res.json({
-    success: true,
-    status: "healthy",
-    service: "Daily Bread Studio API",
-  });
-});
+app.get(
+  "/health",
+  (req, res) => {
+    res.json({
+      success: true,
+      status: "healthy",
+      service:
+        "Daily Bread Studio API",
+      model:
+        GEMINI_MODEL,
+    });
+  }
+);
 
 /* =========================================================
-   GENERATE DEVOTIONAL
+   GENERATE DEVOTIONAL API
 ========================================================= */
 
 app.post(
@@ -199,6 +601,33 @@ app.post(
         reference,
         language = "English",
       } = req.body;
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "POST /api/generate-devotional"
+      );
+
+      console.log(
+        "Theme:",
+        theme
+      );
+
+      console.log(
+        "Reference:",
+        reference
+      );
+
+      console.log(
+        "Language:",
+        language
+      );
+
+      console.log(
+        "========================================"
+      );
 
       /* -----------------------------------------------------
          VALIDATION
@@ -212,222 +641,266 @@ app.post(
           success: false,
           error:
             "Please provide a theme or Bible reference.",
+          code:
+            "MISSING_INPUT",
         });
       }
 
       /* -----------------------------------------------------
-         PROMPT
+         GENERATE
       ----------------------------------------------------- */
 
-      const prompt = `
-You are a Christian devotional writer for a church ministry.
-
-Create today's Daily Bread devotional.
-
-Theme:
-${theme?.trim() || "Not provided"}
-
-Bible Reference:
-${reference?.trim() || "Not provided"}
-
-Language:
-${language}
-
-WRITING REQUIREMENTS:
-
-1. TITLE
-
-Create a short, meaningful and spiritually powerful title.
-
-Keep it 2-5 words whenever possible.
-
-2. HOOK
-
-Create one short sentence introducing today's spiritual message.
-
-3. BIBLE VERSE
-
-If a Bible reference is provided, use that reference.
-
-If no reference is provided, choose an appropriate Bible verse.
-
-Do not invent Bible quotations.
-
-4. REFLECTION
-
-This is extremely important.
-
-Write a SHORT but DEEP reflection.
-
-Length:
-35-55 words approximately.
-
-The reflection must:
-
-- Have spiritual depth.
-- Focus on one clear biblical truth.
-- Be personal and applicable to everyday life.
-- Avoid generic motivational language.
-- Avoid repeating the verse word-for-word.
-- Avoid unnecessary explanation.
-- Be suitable for a church WhatsApp/social media Daily Bread post.
-
-5. PRAYER
-
-Write a short heartfelt Christian prayer.
-
-Approximately 30-50 words.
-
-6. TONE
-
-Biblical, peaceful, encouraging, humble and suitable for church ministry.
-
-7. LANGUAGE
-
-If language is Telugu:
-
-- Write ALL content naturally in Telugu.
-- Use proper Telugu grammar.
-- Use natural Christian Telugu.
-- Do not translate word-for-word from English.
-
-If language is English + Telugu:
-
-- Provide the content naturally in both languages.
-
-IMPORTANT:
-
-Return ONLY valid JSON.
-
-Do not include markdown.
-
-Do not include code fences.
-
-Return exactly this structure:
-
-{
-  "title": "",
-  "hook": "",
-  "verse": "",
-  "reference": "",
-  "reflection": "",
-  "prayer": ""
-}
-`;
-
-      /* -----------------------------------------------------
-         CALL GEMINI
-      ----------------------------------------------------- */
-
-      const text =
-        await generateWithRetry(prompt);
-
-      /* -----------------------------------------------------
-         PARSE JSON
-      ----------------------------------------------------- */
-
-      let devotional;
-
-      try {
-        devotional = JSON.parse(text);
-      } catch (error) {
-        console.error(
-          "Gemini JSON parsing error:"
-        );
-
-        console.error(
-          "Gemini response:",
-          text
-        );
-
-        return res.status(500).json({
-          success: false,
-          error:
-            "Gemini returned invalid devotional data.",
+      const devotional =
+        await generateDevotional({
+          theme:
+            theme?.trim() || "",
+          reference:
+            reference?.trim() || "",
+          language:
+            language?.trim() ||
+            "English",
         });
-      }
 
       /* -----------------------------------------------------
-         RESPONSE
+         SUCCESS
       ----------------------------------------------------- */
+
+      console.log(
+        "✅ Sending devotional to frontend."
+      );
 
       return res.json({
         success: true,
 
         devotional: {
           title:
-            devotional.title || "",
+            devotional.title,
 
           hook:
-            devotional.hook || "",
+            devotional.hook,
 
           verse:
-            devotional.verse || "",
+            devotional.verse,
 
           reference:
-            devotional.reference || "",
+            devotional.reference,
 
           reflection:
-            devotional.reflection || "",
+            devotional.reflection,
 
           prayer:
-            devotional.prayer || "",
+            devotional.prayer,
 
-          language,
+          language:
+            language?.trim() ||
+            "English",
         },
       });
+
     } catch (error) {
       console.error(
-        "Gemini generation error:"
+        "========================================"
+      );
+
+      console.error(
+        "❌ DEVOTIONAL GENERATION ERROR"
+      );
+
+      console.error(
+        "Message:",
+        error?.message
+      );
+
+      console.error(
+        "Status:",
+        error?.status
+      );
+
+      console.error(
+        "Code:",
+        error?.code
+      );
+
+      console.error(
+        "Full error:"
       );
 
       console.error(error);
+
+      console.error(
+        "========================================"
+      );
 
       const status =
         error?.status ||
         error?.code ||
         error?.response?.status;
 
-      /*
-       * Friendly response for Gemini overload.
-       */
+      const message =
+        error?.message || "";
+
+      /* -----------------------------------------------------
+         AUTHENTICATION
+      ----------------------------------------------------- */
+
       if (
-        status === 503 ||
-        error?.message?.includes("high demand") ||
-        error?.message?.includes("UNAVAILABLE") ||
-        error?.message?.includes("overloaded")
+        status === 401 ||
+        status === 403 ||
+        message.includes(
+          "API key"
+        ) ||
+        message.includes(
+          "API_KEY"
+        ) ||
+        message.includes(
+          "authentication"
+        ) ||
+        message.includes(
+          "Unauthenticated"
+        )
       ) {
-        return res.status(503).json({
+        return res.status(500).json({
           success: false,
+
           error:
-            "The AI service is temporarily busy. Please try again in a few seconds.",
-          code: "AI_TEMPORARILY_UNAVAILABLE",
+            "Gemini API authentication failed. Please check GEMINI_API_KEY.",
+
+          code:
+            "GEMINI_AUTH_ERROR",
         });
       }
 
-      /*
-       * Rate limit.
-       */
+      /* -----------------------------------------------------
+         MODEL NOT FOUND
+      ----------------------------------------------------- */
+
+      if (
+        status === 404 ||
+        message.includes(
+          "NOT_FOUND"
+        ) ||
+        message.includes(
+          "not found"
+        )
+      ) {
+        return res.status(500).json({
+          success: false,
+
+          error:
+            `Gemini model "${GEMINI_MODEL}" is unavailable.`,
+
+          code:
+            "GEMINI_MODEL_NOT_FOUND",
+
+          model:
+            GEMINI_MODEL,
+        });
+      }
+
+      /* -----------------------------------------------------
+         RATE LIMIT
+      ----------------------------------------------------- */
+
       if (
         status === 429 ||
-        error?.message?.includes("429")
+        message.includes(
+          "429"
+        ) ||
+        message.includes(
+          "RESOURCE_EXHAUSTED"
+        )
       ) {
         return res.status(429).json({
           success: false,
+
           error:
-            "AI request limit reached temporarily. Please try again shortly.",
-          code: "AI_RATE_LIMITED",
+            "Gemini request limit reached temporarily. Please try again shortly.",
+
+          code:
+            "AI_RATE_LIMITED",
         });
       }
 
-      /*
-       * Generic error.
-       */
+      /* -----------------------------------------------------
+         TEMPORARILY UNAVAILABLE
+      ----------------------------------------------------- */
+
+      if (
+        status === 503 ||
+        message.includes(
+          "UNAVAILABLE"
+        ) ||
+        message.includes(
+          "high demand"
+        ) ||
+        message.includes(
+          "overloaded"
+        )
+      ) {
+        return res.status(503).json({
+          success: false,
+
+          error:
+            "The AI service is temporarily busy. Please try again in a few seconds.",
+
+          code:
+            "AI_TEMPORARILY_UNAVAILABLE",
+        });
+      }
+
+      /* -----------------------------------------------------
+         INVALID JSON
+      ----------------------------------------------------- */
+
+      if (
+        message.includes(
+          "invalid JSON"
+        )
+      ) {
+        return res.status(500).json({
+          success: false,
+
+          error:
+            "Gemini returned an unexpected response. Please try again.",
+
+          code:
+            "INVALID_AI_RESPONSE",
+        });
+      }
+
+      /* -----------------------------------------------------
+         INCOMPLETE DATA
+      ----------------------------------------------------- */
+
+      if (
+        message.includes(
+          "incomplete devotional"
+        )
+      ) {
+        return res.status(500).json({
+          success: false,
+
+          error:
+            "Gemini returned incomplete devotional content. Please try again.",
+
+          code:
+            "INCOMPLETE_AI_RESPONSE",
+        });
+      }
+
+      /* -----------------------------------------------------
+         GENERIC ERROR
+      ----------------------------------------------------- */
+
       return res.status(500).json({
         success: false,
+
         error:
-          error?.message ||
+          message ||
           "Unable to generate devotional.",
+
+        code:
+          "DEVOTIONAL_GENERATION_ERROR",
       });
     }
   }
@@ -437,8 +910,27 @@ Return exactly this structure:
    START SERVER
 ========================================================= */
 
-app.listen(PORT, () => {
-  console.log(
-    `Daily Bread API running on http://localhost:${PORT}`
-  );
-});
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      "========================================"
+    );
+
+    console.log(
+      "Daily Bread Studio API"
+    );
+
+    console.log(
+      `Running on http://localhost:${PORT}`
+    );
+
+    console.log(
+      `Gemini model: ${GEMINI_MODEL}`
+    );
+
+    console.log(
+      "========================================"
+    );
+  }
+);
