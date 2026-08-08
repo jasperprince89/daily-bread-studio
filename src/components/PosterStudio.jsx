@@ -17,9 +17,6 @@ import churchLogo from "../assets/Pic/ChurchLogo.png";
 const fatherName = "John Victor";
 const motherName = "Sharon Victor";
 
-const ministryWebsite =
-  "https://sharon-prayer-fellowship.vercel.app/";
-
 const ministryInstagram = "@spfr_melodies";
 const ministryYoutube = "@sharonprayerhouseRMPLM";
 
@@ -78,75 +75,129 @@ function PosterStudio({ onBack, devotional }) {
   const getReflectionFontSize = (text = "") => {
     const length = text.trim().length;
 
-    if (length <= 70) {
+    if (length <= 60) {
       return isTelugu
         ? "clamp(10px, 1.05cqw, 17px)"
         : "clamp(9px, 1cqw, 15px)";
     }
 
-    if (length <= 120) {
+    if (length <= 100) {
       return isTelugu
         ? "clamp(9.5px, 0.95cqw, 16px)"
         : "clamp(8.5px, 0.9cqw, 14px)";
     }
 
-    if (length <= 180) {
+    if (length <= 150) {
       return isTelugu
         ? "clamp(9px, 0.88cqw, 15px)"
         : "clamp(8px, 0.82cqw, 13px)";
     }
 
-    if (length <= 250) {
+    if (length <= 200) {
       return isTelugu
         ? "clamp(8.5px, 0.82cqw, 14px)"
         : "clamp(7.5px, 0.76cqw, 12px)";
     }
 
-    if (length <= 330) {
+    if (length <= 260) {
       return isTelugu
-        ? "clamp(8px, 0.75cqw, 13px)"
-        : "clamp(7px, 0.68cqw, 11px)";
+        ? "clamp(8px, 0.76cqw, 13px)"
+        : "clamp(7px, 0.7cqw, 11px)";
     }
 
     return isTelugu
-      ? "clamp(7.5px, 0.7cqw, 12px)"
-      : "clamp(6.5px, 0.64cqw, 10px)";
+      ? "clamp(7.5px, 0.68cqw, 12px)"
+      : "clamp(6.5px, 0.62cqw, 10px)";
   };
 
   /* =======================================================
-     VERSE FONT SIZE
+     BIBLE VERSE FONT SIZE
   ======================================================= */
 
   const getVerseFontSize = (text = "") => {
     const length = text.trim().length;
 
-    if (length <= 45) {
+    if (length <= 30) {
+      return isTelugu
+        ? "clamp(11px, 1.15cqw, 18px)"
+        : "clamp(11px, 1.2cqw, 19px)";
+    }
+
+    if (length <= 50) {
       return isTelugu
         ? "clamp(10px, 1.05cqw, 17px)"
-        : "clamp(9px, 1cqw, 15px)";
+        : "clamp(10px, 1.1cqw, 17px)";
     }
 
     if (length <= 75) {
       return isTelugu
-        ? "clamp(9.5px, 0.95cqw, 16px)"
-        : "clamp(8.5px, 0.9cqw, 14px)";
+        ? "clamp(9.5px, 0.96cqw, 16px)"
+        : "clamp(9px, 1cqw, 16px)";
     }
 
-    if (length <= 110) {
+    if (length <= 105) {
       return isTelugu
         ? "clamp(9px, 0.88cqw, 15px)"
-        : "clamp(8px, 0.82cqw, 13px)";
+        : "clamp(8.5px, 0.92cqw, 15px)";
     }
 
-    if (length <= 150) {
+    if (length <= 140) {
       return isTelugu
         ? "clamp(8.5px, 0.82cqw, 14px)"
-        : "clamp(7.5px, 0.76cqw, 12px)";
+        : "clamp(8px, 0.84cqw, 14px)";
+    }
+
+    if (length <= 180) {
+      return isTelugu
+        ? "clamp(8px, 0.76cqw, 13px)"
+        : "clamp(7.5px, 0.78cqw, 13px)";
+    }
+
+    if (length <= 230) {
+      return isTelugu
+        ? "clamp(7.5px, 0.7cqw, 12px)"
+        : "clamp(7px, 0.72cqw, 12px)";
     }
 
     return isTelugu
-      ? "clamp(8px, 0.75cqw, 13px)"
-      : "clamp(7px, 0.68cqw, 11px)";
+      ? "clamp(7px, 0.64cqw, 11px)"
+      : "clamp(6.5px, 0.68cqw, 11px)";
+  };
+
+  /* =======================================================
+     BIBLE REFERENCE FONT SIZE
+  ======================================================= */
+
+  const getReferenceFontSize = (text = "") => {
+    const length = text.trim().length;
+
+    if (length <= 15) {
+      return isTelugu
+        ? "clamp(6px, 0.7cqw, 10px)"
+        : "clamp(6px, 0.75cqw, 11px)";
+    }
+
+    if (length <= 25) {
+      return isTelugu
+        ? "clamp(5.7px, 0.66cqw, 9px)"
+        : "clamp(5.7px, 0.7cqw, 10px)";
+    }
+
+    if (length <= 35) {
+      return isTelugu
+        ? "clamp(5.3px, 0.61cqw, 8.5px)"
+        : "clamp(5.3px, 0.65cqw, 9px)";
+    }
+
+    if (length <= 45) {
+      return isTelugu
+        ? "clamp(5px, 0.57cqw, 8px)"
+        : "clamp(5px, 0.61cqw, 8.5px)";
+    }
+
+    return isTelugu
+      ? "clamp(4.6px, 0.53cqw, 7.5px)"
+      : "clamp(4.6px, 0.57cqw, 8px)";
   };
 
   /* =======================================================
@@ -219,7 +270,10 @@ function PosterStudio({ onBack, devotional }) {
         setIsDownloading(false);
       }, "image/png");
     } catch (error) {
-      console.error("Poster download failed:", error);
+      console.error(
+        "Poster download failed:",
+        error
+      );
 
       setIsDownloading(false);
 
@@ -296,6 +350,7 @@ function PosterStudio({ onBack, devotional }) {
               sm:text-sm
             "
           >
+
             <Download size={16} />
 
             <span className="hidden sm:inline">
@@ -303,6 +358,7 @@ function PosterStudio({ onBack, devotional }) {
                 ? "Creating..."
                 : "Download"}
             </span>
+
           </button>
 
         </div>
@@ -843,8 +899,7 @@ function PosterStudio({ onBack, devotional }) {
                 </div>
 
                 {/* =================================================
-                    ACTUAL REFLECTION
-                    FIRST CONTENT BOX
+                    REFLECTION
                 ================================================= */}
 
                 {showReflection && (
@@ -852,7 +907,7 @@ function PosterStudio({ onBack, devotional }) {
                     className="
                       mt-[1.5cqw]
                       min-h-0
-                      shrink-0
+                      shrink
                       overflow-hidden
                       rounded-[1.2cqw]
                       border-[0.14cqw]
@@ -866,6 +921,7 @@ function PosterStudio({ onBack, devotional }) {
                     <p
                       className={`
                         break-words
+                        whitespace-pre-line
                         text-white
                         ${
                           isTelugu
@@ -878,7 +934,8 @@ function PosterStudio({ onBack, devotional }) {
                           getReflectionFontSize(
                             reflection
                           ),
-                        lineHeight: 1.42,
+                        lineHeight: 1.38,
+                        overflowWrap: "anywhere",
                       }}
                     >
                       {reflection}
@@ -889,27 +946,29 @@ function PosterStudio({ onBack, devotional }) {
 
                 {/* =================================================
                     BIBLE VERSE + REFERENCE
-                    SECOND CONTENT BOX
                 ================================================= */}
 
                 <div
                   className="
-                    mt-[1.2cqw]
+                    mt-[1.4cqw]
                     min-h-0
                     shrink
                     overflow-hidden
                     rounded-[1.2cqw]
                     border-[0.14cqw]
                     border-[#9d7a32]
-                    bg-black/60
-                    px-[2.5cqw]
+                    bg-black/65
+                    px-[2.4cqw]
                     py-[1.5cqw]
                   "
                 >
 
+                  {/* VERSE */}
+
                   <p
                     className={`
                       break-words
+                      whitespace-pre-line
                       text-white
                       ${
                         isTelugu
@@ -920,32 +979,43 @@ function PosterStudio({ onBack, devotional }) {
                     style={{
                       fontSize:
                         getVerseFontSize(verse),
-                      lineHeight: 1.38,
+                      lineHeight: 1.28,
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
                     }}
                   >
                     “{verse}”
                   </p>
 
-                  <p
-                    className={`
-                      mt-[0.8cqw]
-                      break-words
-                      font-semibold
-                      text-[#e5bd35]
-                      ${
-                        isTelugu
-                          ? "font-potti"
-                          : ""
-                      }
-                    `}
-                    style={{
-                      fontSize:
-                        "clamp(5px, 0.72cqw, 10px)",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    — {reference}
-                  </p>
+                  {/* REFERENCE */}
+
+                  {reference.trim() && (
+                    <p
+                      className={`
+                        mt-[0.8cqw]
+                        break-words
+                        whitespace-normal
+                        font-semibold
+                        text-[#e5bd35]
+                        ${
+                          isTelugu
+                            ? "font-potti"
+                            : ""
+                        }
+                      `}
+                      style={{
+                        fontSize:
+                          getReferenceFontSize(
+                            reference
+                          ),
+                        lineHeight: 1.15,
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      — {reference}
+                    </p>
+                  )}
 
                 </div>
 
@@ -1108,7 +1178,7 @@ function PosterStudio({ onBack, devotional }) {
                   "
                   style={{
                     fontSize:
-                      "clamp(8px, 0.4cqw, 6px)",
+                      "clamp(4.5px, 0.4cqw, 6px)",
                     lineHeight: 1,
                   }}
                 >
@@ -1128,7 +1198,7 @@ function PosterStudio({ onBack, devotional }) {
                   "
                   style={{
                     fontSize:
-                      "clamp(7px, 0.38cqw, 5.8px)",
+                      "clamp(4.5px, 0.38cqw, 5.8px)",
                     lineHeight: 1,
                   }}
                 >
@@ -1151,7 +1221,7 @@ function PosterStudio({ onBack, devotional }) {
                   "
                   style={{
                     fontSize:
-                      "clamp(7px, 0.39cqw, 5.8px)",
+                      "clamp(4.5px, 0.39cqw, 5.8px)",
                     lineHeight: 1,
                   }}
                 >
