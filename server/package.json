@@ -1,20 +1,17 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Daily Bread Studio API",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "@google/genai": "^2.16.0",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "openai": "^7.4.0"
+    "@google/genai": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
   }
 }
