@@ -3,13 +3,16 @@ import html2canvas from "html2canvas-pro";
 import {
   ArrowLeft,
   Download,
-  Heart,
   Sparkles,
 } from "lucide-react";
 
 import familyImage from "../assets/Pic/Family.png";
 import monthlyBackground from "../assets/backgrounds/Aug.png";
 import churchLogo from "../assets/Pic/ChurchLogo.png";
+
+/* =========================================================
+   MINISTRY DETAILS
+========================================================= */
 
 const fatherName = "John Victor";
 const motherName = "Sharon Victor";
@@ -23,12 +26,16 @@ const ministryYoutube = "@sharonprayerhouseRMPLM";
 const ministryPhone1 = "+91 8328187655";
 const ministryPhone2 = "+91 7780348832";
 
+/* =========================================================
+   POSTER STUDIO
+========================================================= */
+
 function PosterStudio({ onBack, devotional }) {
   const posterRef = useRef(null);
 
-  /* =========================================================
+  /* =======================================================
      CONTENT
-  ========================================================= */
+  ======================================================= */
 
   const [title, setTitle] = useState(
     devotional?.title || "విశ్వాసముతో\nఅడుగులు"
@@ -51,9 +58,9 @@ function PosterStudio({ onBack, devotional }) {
   const [showReflection, setShowReflection] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  /* =========================================================
+  /* =======================================================
      TELUGU DETECTION
-  ========================================================= */
+  ======================================================= */
 
   const containsTelugu = (text = "") =>
     /[\u0C00-\u0C7F]/.test(text);
@@ -64,88 +71,87 @@ function PosterStudio({ onBack, devotional }) {
     containsTelugu(reference) ||
     containsTelugu(reflection);
 
-  /* =========================================================
-     AUTOMATIC FONT SIZE
+  /* =======================================================
+     REFLECTION FONT SIZE
+  ======================================================= */
 
-     Short text  -> larger
-     Long text   -> smaller
-
-     This prevents overflow while keeping short content
-     visually strong.
-  ========================================================= */
-
-  const getAutoFontSize = (text = "", type = "verse") => {
+  const getReflectionFontSize = (text = "") => {
     const length = text.trim().length;
 
-    /* ---------------------------------------------------------
-       BIBLE VERSE
-    --------------------------------------------------------- */
-
-    if (type === "verse") {
-      if (length <= 45) {
-        return isTelugu ? 19 : 21;
-      }
-
-      if (length <= 70) {
-        return isTelugu ? 17 : 19;
-      }
-
-      if (length <= 100) {
-        return isTelugu ? 15 : 17;
-      }
-
-      if (length <= 140) {
-        return isTelugu ? 13.5 : 15;
-      }
-
-      if (length <= 180) {
-        return isTelugu ? 12 : 13.5;
-      }
-
-      if (length <= 220) {
-        return isTelugu ? 11.5 : 13;
-      }
-
-      return isTelugu ? 10.5 : 12;
+    if (length <= 70) {
+      return isTelugu
+        ? "clamp(10px, 1.05cqw, 17px)"
+        : "clamp(9px, 1cqw, 15px)";
     }
 
-    /* ---------------------------------------------------------
-       REFLECTION
-
-       Reflection is now the main content, so it is
-       intentionally larger than before.
-    --------------------------------------------------------- */
-
-    if (length <= 80) {
-      return isTelugu ? 16 : 13;
-    }
-
-    if (length <= 130) {
-      return isTelugu ? 14 : 12;
+    if (length <= 120) {
+      return isTelugu
+        ? "clamp(9.5px, 0.95cqw, 16px)"
+        : "clamp(8.5px, 0.9cqw, 14px)";
     }
 
     if (length <= 180) {
-      return isTelugu ? 12.5 : 11;
+      return isTelugu
+        ? "clamp(9px, 0.88cqw, 15px)"
+        : "clamp(8px, 0.82cqw, 13px)";
     }
 
-    if (length <= 240) {
-      return isTelugu ? 11.5 : 10;
+    if (length <= 250) {
+      return isTelugu
+        ? "clamp(8.5px, 0.82cqw, 14px)"
+        : "clamp(7.5px, 0.76cqw, 12px)";
     }
 
-    if (length <= 320) {
-      return isTelugu ? 10.5 : 9;
+    if (length <= 330) {
+      return isTelugu
+        ? "clamp(8px, 0.75cqw, 13px)"
+        : "clamp(7px, 0.68cqw, 11px)";
     }
 
-    if (length <= 400) {
-      return isTelugu ? 10 : 8.5;
-    }
-
-    return isTelugu ? 9.5 : 8;
+    return isTelugu
+      ? "clamp(7.5px, 0.7cqw, 12px)"
+      : "clamp(6.5px, 0.64cqw, 10px)";
   };
 
-  /* =========================================================
+  /* =======================================================
+     VERSE FONT SIZE
+  ======================================================= */
+
+  const getVerseFontSize = (text = "") => {
+    const length = text.trim().length;
+
+    if (length <= 45) {
+      return isTelugu
+        ? "clamp(10px, 1.05cqw, 17px)"
+        : "clamp(9px, 1cqw, 15px)";
+    }
+
+    if (length <= 75) {
+      return isTelugu
+        ? "clamp(9.5px, 0.95cqw, 16px)"
+        : "clamp(8.5px, 0.9cqw, 14px)";
+    }
+
+    if (length <= 110) {
+      return isTelugu
+        ? "clamp(9px, 0.88cqw, 15px)"
+        : "clamp(8px, 0.82cqw, 13px)";
+    }
+
+    if (length <= 150) {
+      return isTelugu
+        ? "clamp(8.5px, 0.82cqw, 14px)"
+        : "clamp(7.5px, 0.76cqw, 12px)";
+    }
+
+    return isTelugu
+      ? "clamp(8px, 0.75cqw, 13px)"
+      : "clamp(7px, 0.68cqw, 11px)";
+  };
+
+  /* =======================================================
      DOWNLOAD POSTER
-  ========================================================= */
+  ======================================================= */
 
   const downloadPoster = async () => {
     if (!posterRef.current || isDownloading) return;
@@ -223,6 +229,10 @@ function PosterStudio({ onBack, devotional }) {
     }
   };
 
+  /* =======================================================
+     RETURN
+  ======================================================= */
+
   return (
     <div className="min-h-screen bg-[#eee7dd] text-[#2c211a]">
 
@@ -232,14 +242,17 @@ function PosterStudio({ onBack, devotional }) {
 
       <header className="sticky top-0 z-50 border-b border-[#ded3c5] bg-[#fffdfa]/95 backdrop-blur">
 
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-5">
 
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-sm font-medium text-[#654331]"
           >
             <ArrowLeft size={18} />
-            Back
+
+            <span className="hidden sm:inline">
+              Back
+            </span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -251,11 +264,11 @@ function PosterStudio({ onBack, devotional }) {
 
             <div className="text-center">
 
-              <h1 className="font-serif text-lg font-semibold">
+              <h1 className="font-serif text-base font-semibold sm:text-lg">
                 Poster Studio
               </h1>
 
-              <p className="text-[9px] uppercase tracking-[0.28em] text-[#9a8978]">
+              <p className="text-[8px] uppercase tracking-[0.28em] text-[#9a8978] sm:text-[9px]">
                 August Daily Bread
               </p>
 
@@ -266,13 +279,30 @@ function PosterStudio({ onBack, devotional }) {
           <button
             onClick={downloadPoster}
             disabled={isDownloading}
-            className="flex items-center gap-2 rounded-xl bg-[#654331] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="
+              flex
+              items-center
+              gap-2
+              rounded-xl
+              bg-[#654331]
+              px-3
+              py-2
+              text-xs
+              font-semibold
+              text-white
+              disabled:opacity-60
+              sm:px-4
+              sm:py-2.5
+              sm:text-sm
+            "
           >
-            <Download size={17} />
+            <Download size={16} />
 
-            {isDownloading
-              ? "Creating..."
-              : "Download"}
+            <span className="hidden sm:inline">
+              {isDownloading
+                ? "Creating..."
+                : "Download"}
+            </span>
           </button>
 
         </div>
@@ -283,16 +313,30 @@ function PosterStudio({ onBack, devotional }) {
           MAIN
       ===================================================== */}
 
-      <main className="mx-auto grid max-w-7xl gap-7 px-5 py-7 lg:grid-cols-[350px_1fr]">
+      <main
+        className="
+          mx-auto
+          flex
+          max-w-7xl
+          flex-col
+          gap-6
+          px-3
+          py-5
+          sm:px-5
+          sm:py-7
+          lg:grid
+          lg:grid-cols-[350px_1fr]
+        "
+      >
 
         {/* ===================================================
-            LEFT CONTROLS
+            CONTROLS
         =================================================== */}
 
-        <aside className="space-y-5">
+        <aside className="order-2 space-y-5 lg:order-1">
 
           {/* =================================================
-              MONTHLY BACKGROUND
+              BACKGROUND
           ================================================= */}
 
           <section className="rounded-3xl border border-[#e5dbcf] bg-white p-5 shadow-sm">
@@ -372,11 +416,20 @@ function PosterStudio({ onBack, devotional }) {
                 setTitle(e.target.value)
               }
               rows={2}
-              className={`mb-5 w-full resize-none rounded-xl border border-[#ded3c5] bg-[#fdfbf8] px-4 py-3 text-sm outline-none ${
-                isTelugu
-                  ? "font-potti text-lg"
-                  : ""
-              }`}
+              className={`
+                mb-5
+                w-full
+                resize-none
+                rounded-xl
+                border
+                border-[#ded3c5]
+                bg-[#fdfbf8]
+                px-4
+                py-3
+                text-sm
+                outline-none
+                ${isTelugu ? "font-potti text-lg" : ""}
+              `}
             />
 
             {/* BIBLE VERSE */}
@@ -391,11 +444,21 @@ function PosterStudio({ onBack, devotional }) {
                 setVerse(e.target.value)
               }
               rows={4}
-              className={`mb-5 w-full resize-none rounded-xl border border-[#ded3c5] bg-[#fdfbf8] px-4 py-3 text-sm leading-6 outline-none ${
-                isTelugu
-                  ? "font-potti text-lg"
-                  : ""
-              }`}
+              className={`
+                mb-5
+                w-full
+                resize-none
+                rounded-xl
+                border
+                border-[#ded3c5]
+                bg-[#fdfbf8]
+                px-4
+                py-3
+                text-sm
+                leading-6
+                outline-none
+                ${isTelugu ? "font-potti text-lg" : ""}
+              `}
             />
 
             {/* REFERENCE */}
@@ -409,11 +472,19 @@ function PosterStudio({ onBack, devotional }) {
               onChange={(e) =>
                 setReference(e.target.value)
               }
-              className={`mb-5 w-full rounded-xl border border-[#ded3c5] bg-[#fdfbf8] px-4 py-3 text-sm outline-none ${
-                isTelugu
-                  ? "font-potti text-lg"
-                  : ""
-              }`}
+              className={`
+                mb-5
+                w-full
+                rounded-xl
+                border
+                border-[#ded3c5]
+                bg-[#fdfbf8]
+                px-4
+                py-3
+                text-sm
+                outline-none
+                ${isTelugu ? "font-potti text-lg" : ""}
+              `}
             />
 
             {/* REFLECTION */}
@@ -448,11 +519,20 @@ function PosterStudio({ onBack, devotional }) {
                   )
                 }
                 rows={6}
-                className={`w-full resize-none rounded-xl border border-[#ded3c5] bg-[#fdfbf8] px-4 py-3 text-sm leading-6 outline-none ${
-                  isTelugu
-                    ? "font-potti text-lg"
-                    : ""
-                }`}
+                className={`
+                  w-full
+                  resize-none
+                  rounded-xl
+                  border
+                  border-[#ded3c5]
+                  bg-[#fdfbf8]
+                  px-4
+                  py-3
+                  text-sm
+                  leading-6
+                  outline-none
+                  ${isTelugu ? "font-potti text-lg" : ""}
+                `}
               />
             )}
 
@@ -464,10 +544,32 @@ function PosterStudio({ onBack, devotional }) {
             POSTER PREVIEW
         =================================================== */}
 
-        <section className="flex items-start justify-center rounded-[2rem] bg-[#e4dbcf] p-4 sm:p-8">
+        <section
+          className="
+            order-1
+            flex
+            w-full
+            items-start
+            justify-center
+            overflow-hidden
+            rounded-[2rem]
+            bg-[#e4dbcf]
+            p-2
+            sm:p-5
+            lg:order-2
+            lg:p-8
+          "
+        >
+
+          {/* =================================================
+              POSTER CANVAS
+          ================================================= */}
 
           <div
             ref={posterRef}
+            style={{
+              containerType: "inline-size",
+            }}
             className="
               relative
               aspect-[4/5]
@@ -486,6 +588,7 @@ function PosterStudio({ onBack, devotional }) {
             <img
               src={monthlyBackground}
               alt=""
+              draggable="false"
               className="
                 absolute
                 inset-0
@@ -497,19 +600,373 @@ function PosterStudio({ onBack, devotional }) {
             />
 
             {/* =================================================
-                CHURCH LOGO
-                TOP RIGHT
+                MAIN POSTER AREA
+                84%
             ================================================= */}
 
             <div
               className="
                 absolute
+                inset-x-0
+                top-0
+                z-10
+                h-[84%]
+                overflow-hidden
+              "
+            >
+
+              {/* LEFT DARK PANEL */}
+
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  inset-y-0
+                  left-0
+                  z-10
+                  w-[52%]
+                  bg-gradient-to-r
+                  from-black
+                  via-black/95
+                  to-black/5
+                "
+              />
+
+              {/* CENTER BLEND */}
+
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  inset-y-0
+                  left-[36%]
+                  z-20
+                  w-[22%]
+                  bg-gradient-to-r
+                  from-black/55
+                  via-black/20
+                  to-transparent
+                "
+              />
+
+              {/* =================================================
+                  FAMILY IMAGE
+              ================================================= */}
+
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  bottom-0
+                  right-0
+                  z-30
+                  h-full
+                  w-[58%]
+                "
+              >
+
+                <img
+                  src={familyImage}
+                  alt="Family"
+                  draggable="false"
+                  className="
+                    absolute
+                    bottom-0
+                    right-0
+                    h-full
+                    w-full
+                    object-contain
+                    object-right-bottom
+                  "
+                />
+
+              </div>
+
+              {/* =================================================
+                  LEFT CONTENT
+              ================================================= */}
+
+              <div
+                className="
+                  absolute
+                  left-0
+                  top-0
+                  z-50
+                  flex
+                  h-full
+                  w-[46%]
+                  flex-col
+                  overflow-hidden
+                  px-[6%]
+                  pt-[4.5%]
+                  pb-[2.5%]
+                "
+              >
+
+                {/* =================================================
+                    DAILY PROMISE
+                ================================================= */}
+
+                <div className="shrink-0">
+
+                  <p
+                    className="
+                      font-semibold
+                      uppercase
+                      tracking-[0.32em]
+                      text-white
+                    "
+                    style={{
+                      fontSize:
+                        "clamp(8px, 1.05cqw, 16px)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    Daily Promise
+                  </p>
+
+                  <div className="mt-[1.8cqw] flex items-center">
+
+                    <div
+                      className="
+                        h-[0.16cqw]
+                        w-[7cqw]
+                        bg-[#e2b52d]
+                      "
+                    />
+
+                    <span
+                      className="mx-[1cqw] text-[#e2b52d]"
+                      style={{
+                        fontSize:
+                          "clamp(6px, 0.7cqw, 11px)",
+                        lineHeight: 1,
+                      }}
+                    >
+                      ❧
+                    </span>
+
+                    <div
+                      className="
+                        h-[0.16cqw]
+                        w-[7cqw]
+                        bg-[#e2b52d]
+                      "
+                    />
+
+                  </div>
+
+                  <p
+                    className="
+                      mt-[1.8cqw]
+                      uppercase
+                      tracking-[0.25em]
+                      text-white/70
+                    "
+                    style={{
+                      fontSize:
+                        "clamp(5px, 0.6cqw, 9px)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    A Word For Today
+                  </p>
+
+                </div>
+
+                {/* =================================================
+                    TITLE
+                ================================================= */}
+
+                <div className="mt-[3.6cqw] shrink-0">
+
+                  <h1
+                    className={`
+                      whitespace-pre-line
+                      break-words
+                      text-white
+                      ${
+                        isTelugu
+                          ? "font-potti font-normal"
+                          : "font-serif font-bold"
+                      }
+                    `}
+                    style={{
+                      fontSize: isTelugu
+                        ? "clamp(20px, 2.5cqw, 40px)"
+                        : "clamp(20px, 2.8cqw, 43px)",
+                      lineHeight: 1.08,
+                    }}
+                  >
+                    {title}
+                  </h1>
+
+                  <div
+                    className="
+                      mt-[2cqw]
+                      h-[0.2cqw]
+                      w-[5.5cqw]
+                      bg-[#e2b52d]
+                    "
+                  />
+
+                </div>
+
+                {/* =================================================
+                    TODAY'S PROMISE
+                ================================================= */}
+
+                <div className="mt-[2cqw] shrink-0">
+
+                  <span
+                    className="
+                      inline-flex
+                      rounded-full
+                      border
+                      border-[#e0b42c]
+                      px-[1.4cqw]
+                      py-[0.55cqw]
+                      font-bold
+                      uppercase
+                      tracking-[0.06em]
+                      text-[#f1c844]
+                    "
+                    style={{
+                      fontSize:
+                        "clamp(5px, 0.6cqw, 9px)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    Today's Promise
+                  </span>
+
+                </div>
+
+                {/* =================================================
+                    ACTUAL REFLECTION
+                    FIRST CONTENT BOX
+                ================================================= */}
+
+                {showReflection && (
+                  <div
+                    className="
+                      mt-[1.5cqw]
+                      min-h-0
+                      shrink-0
+                      overflow-hidden
+                      rounded-[1.2cqw]
+                      border-[0.14cqw]
+                      border-[#c29a3d]
+                      bg-black/65
+                      px-[2.5cqw]
+                      py-[1.7cqw]
+                    "
+                  >
+
+                    <p
+                      className={`
+                        break-words
+                        text-white
+                        ${
+                          isTelugu
+                            ? "font-potti"
+                            : "font-serif"
+                        }
+                      `}
+                      style={{
+                        fontSize:
+                          getReflectionFontSize(
+                            reflection
+                          ),
+                        lineHeight: 1.42,
+                      }}
+                    >
+                      {reflection}
+                    </p>
+
+                  </div>
+                )}
+
+                {/* =================================================
+                    BIBLE VERSE + REFERENCE
+                    SECOND CONTENT BOX
+                ================================================= */}
+
+                <div
+                  className="
+                    mt-[1.2cqw]
+                    min-h-0
+                    shrink
+                    overflow-hidden
+                    rounded-[1.2cqw]
+                    border-[0.14cqw]
+                    border-[#9d7a32]
+                    bg-black/60
+                    px-[2.5cqw]
+                    py-[1.5cqw]
+                  "
+                >
+
+                  <p
+                    className={`
+                      break-words
+                      text-white
+                      ${
+                        isTelugu
+                          ? "font-potti"
+                          : "font-serif"
+                      }
+                    `}
+                    style={{
+                      fontSize:
+                        getVerseFontSize(verse),
+                      lineHeight: 1.38,
+                    }}
+                  >
+                    “{verse}”
+                  </p>
+
+                  <p
+                    className={`
+                      mt-[0.8cqw]
+                      break-words
+                      font-semibold
+                      text-[#e5bd35]
+                      ${
+                        isTelugu
+                          ? "font-potti"
+                          : ""
+                      }
+                    `}
+                    style={{
+                      fontSize:
+                        "clamp(5px, 0.72cqw, 10px)",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    — {reference}
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* =================================================
+                CHURCH LOGO
+            ================================================= */}
+
+            <div
+              className="
+                pointer-events-none
+                absolute
                 right-[3%]
                 top-[2.5%]
-                z-50
+                z-[70]
                 flex
-                h-[90px]
-                w-[130px]
+                h-[15cqw]
+                w-[20cqw]
                 items-center
                 justify-center
               "
@@ -530,291 +987,8 @@ function PosterStudio({ onBack, devotional }) {
             </div>
 
             {/* =================================================
-                MAIN POSTER AREA
-                FOOTER IS SEPARATE
-            ================================================= */}
-
-            <div
-              className="
-                absolute
-                inset-x-0
-                top-0
-                z-10
-                h-[79%]
-              "
-            >
-
-              {/* =================================================
-                  LEFT DARK CONTENT PANEL
-              ================================================= */}
-
-              <div
-                className="
-                  pointer-events-none
-                  absolute
-                  inset-y-0
-                  left-0
-                  z-[1]
-                  w-[47%]
-                  bg-gradient-to-r
-                  from-black
-                  via-black/95
-                  to-black/10
-                "
-              />
-
-              {/* =================================================
-                  LEFT CONTENT
-              ================================================= */}
-
-              <div
-                className="
-                  absolute
-                  left-0
-                  top-0
-                  z-30
-                  h-full
-                  w-[47%]
-                  px-[9%]
-                  pt-[6%]
-                "
-              >
-
-                {/* DAILY PROMISE */}
-
-                <div>
-
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white">
-                    Daily Promise
-                  </p>
-
-                  <div className="mt-3 flex items-center">
-
-                    <div className="h-[2px] w-[58px] bg-[#e2b52d]" />
-
-                    <span className="mx-2 text-[9px] text-[#e2b52d]">
-                      ❧
-                    </span>
-
-                    <div className="h-[2px] w-[58px] bg-[#e2b52d]" />
-
-                  </div>
-
-                  <p className="mt-3 text-[7px] uppercase tracking-[0.34em] text-white/70">
-                    A Word For Today
-                  </p>
-
-                </div>
-
-                {/* =================================================
-                    TITLE
-                ================================================= */}
-
-                <div className="mt-[8%]">
-
-                  <h1
-                    className={`
-                      whitespace-pre-line
-                      break-words
-                      text-white
-                      ${
-                        isTelugu
-                          ? "font-potti text-[clamp(24px,3.1vw,45px)] font-normal leading-[1.12]"
-                          : "font-serif text-[clamp(28px,3.5vw,50px)] font-bold leading-[1.04]"
-                      }
-                    `}
-                  >
-                    {title}
-                  </h1>
-
-                  <div className="mt-5 h-[3px] w-[55px] bg-[#e2b52d]" />
-
-                </div>
-
-                {/* =================================================
-                    TODAY'S PROMISE
-                ================================================= */}
-
-                <div className="mt-5">
-
-                  <span
-                    className="
-                      inline-flex
-                      rounded-full
-                      border
-                      border-[#e0b42c]
-                      px-3
-                      py-1.5
-                      text-[7px]
-                      font-bold
-                      uppercase
-                      tracking-[0.13em]
-                      text-[#f1c844]
-                    "
-                  >
-                    Today&apos;s Promise
-                  </span>
-
-                </div>
-
-                {/* =================================================
-                    MAIN REFLECTION CONTENT
-
-                    IMPORTANT:
-                    The old verse area now displays
-                    the Reflection content.
-                ================================================= */}
-
-                {showReflection && (
-                  <div className="mt-4">
-
-                    <p
-                      className={`
-                        break-words
-                        text-white
-                        ${
-                          isTelugu
-                            ? "font-potti"
-                            : "font-serif"
-                        }
-                      `}
-                      style={{
-                        fontSize: `${getAutoFontSize(
-                          reflection,
-                          "reflection"
-                        )}px`,
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {reflection}
-                    </p>
-
-                  </div>
-                )}
-
-                {/* =================================================
-                    BIBLE VERSE BOX
-
-                    Bible verse + reference now appear here.
-                ================================================= */}
-
-                <div
-                  className="
-                    mt-5
-                    w-full
-                    rounded-[18px]
-                    border-[2px]
-                    border-[#c29a3d]
-                    bg-black/65
-                    px-5
-                    py-5
-                    shadow-[0_5px_18px_rgba(0,0,0,0.25)]
-                  "
-                >
-
-                  <p
-                    className={`
-                      w-full
-                      break-words
-                      text-white
-                      ${
-                        isTelugu
-                          ? "font-potti"
-                          : "font-serif"
-                      }
-                    `}
-                    style={{
-                      fontSize: `${getAutoFontSize(
-                        verse,
-                        "verse"
-                      )}px`,
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    “{verse}”
-                  </p>
-
-                  <p
-                    className={`
-                      mt-3
-                      font-semibold
-                      text-[#e5bd35]
-                      ${
-                        isTelugu
-                          ? "font-potti"
-                          : ""
-                      }
-                    `}
-                    style={{
-                      fontSize: isTelugu
-                        ? "12px"
-                        : "10px",
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    — {reference}
-                  </p>
-
-                </div>
-
-              </div>
-
-              {/* =================================================
-                  FAMILY IMAGE
-
-                  Dedicated RIGHT SIDE.
-                  It cannot overlap the left content because
-                  it is confined to the right-side zone.
-              ================================================= */}
-
-              <div
-                className="
-                  absolute
-                  right-0
-                  top-0
-                  z-20
-                  h-full
-                  w-[54%]
-                  overflow-hidden
-                  pointer-events-none
-                "
-              >
-
-                <div
-                  className="
-                    absolute
-                    inset-0
-                    flex
-                    items-end
-                    justify-end
-                  "
-                >
-
-                  <img
-                    src={familyImage}
-                    alt="Family"
-                    draggable="false"
-                    className="
-                      block
-                      h-auto
-                      w-auto
-                      max-h-full
-                      max-w-full
-                      object-contain
-                      object-right-bottom
-                    "
-                  />
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* =================================================
-                FULL WIDTH FOOTER
-
-                This section spans BOTH left and right.
+                FOOTER
+                16%
             ================================================= */}
 
             <div
@@ -822,144 +996,173 @@ function PosterStudio({ onBack, devotional }) {
                 absolute
                 inset-x-0
                 bottom-0
-                z-40
-                h-[21%]
-                bg-black/90
+                z-[80]
+                h-[16%]
+                overflow-hidden
+                bg-black/95
               "
             >
 
-              {/* TOP GOLD LINE */}
+              {/* GOLD TOP BORDER */}
 
-              <div className="absolute left-0 right-0 top-0 h-[1.5px] bg-[#dcae20]/80" />
+              <div
+                className="
+                  absolute
+                  left-0
+                  right-0
+                  top-0
+                  h-[0.14cqw]
+                  bg-[#dcae20]
+                "
+              />
+
+              {/* FOOTER CONTENT */}
 
               <div
                 className="
                   flex
                   h-full
+                  w-full
                   flex-col
                   items-center
                   justify-center
-                  px-5
+                  px-[3cqw]
                   text-center
                 "
               >
 
-                {/* DECORATIVE LINE */}
+                {/* MINISTRY NAME */}
 
-                <div className="mb-2.5 flex w-[45%] items-center">
-
-                  <div className="h-[2px] flex-1 bg-[#dcae20]" />
-
-                  <span className="mx-3 text-[15px] text-[#e2b52d]">
-                    ♛
-                  </span>
-
-                  <div className="h-[2px] flex-1 bg-[#dcae20]" />
-
-                </div>
-
-                {/* MINISTRY */}
-
-                <p className="font-serif text-[clamp(14px,1.5vw,20px)] italic text-white">
+                <p
+                  className="
+                    whitespace-nowrap
+                    font-serif
+                    italic
+                    font-semibold
+                    text-white
+                  "
+                  style={{
+                    fontSize:
+                      "clamp(9.5px, 1.15cqw, 18px)",
+                    lineHeight: 1.25,
+                  }}
+                >
                   Sharon Prayer Fellowship
                 </p>
 
                 {/* LOCATION */}
 
-                <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.4em] text-[#e3b52d]">
-                  Ramayyapalem
+                <p
+                  className="
+                    mt-[0.35cqw]
+                    whitespace-nowrap
+                    font-bold
+                    uppercase
+                    tracking-[0.3em]
+                    text-[#e3b52d]
+                  "
+                  style={{
+                    fontSize:
+                      "clamp(4px, 0.48cqw, 7px)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  RAMAYYAPALEM
                 </p>
 
-                {/* PARENTS */}
+                {/* NAMES */}
 
-                <p className="mt-2 font-serif text-[clamp(12px,1.2vw,16px)] font-semibold text-white">
-
+                <p
+                  className="
+                    mt-[0.45cqw]
+                    whitespace-nowrap
+                    font-serif
+                    font-semibold
+                    text-white
+                  "
+                  style={{
+                    fontSize:
+                      "clamp(8px, 0.82cqw, 12px)",
+                    lineHeight: 1,
+                  }}
+                >
                   {fatherName}
 
-                  <span className="mx-3 text-[#e3b52d]">
+                  <span className="mx-[0.7cqw] text-[#e3b52d]">
                     &
                   </span>
 
                   {motherName}
-
                 </p>
 
-                {/* WEBSITE / INSTAGRAM / YOUTUBE */}
+                {/* WEBSITE */}
 
-                <div
+                <p
                   className="
-                    mt-2
-                    flex
-                    flex-wrap
-                    items-center
-                    justify-center
-                    gap-x-4
-                    gap-y-1.5
-                    text-[clamp(7px,0.72vw,10px)]
-                    text-white/90
-                  "
-                >
-
-                  <span>
-                    🌐 {ministryWebsite}
-                  </span>
-
-                  <span className="text-[#e3b52d]">
-                    •
-                  </span>
-
-                  <span>
-                    Instagram: {ministryInstagram}
-                  </span>
-
-                  <span className="text-[#e3b52d]">
-                    •
-                  </span>
-
-                  <span>
-                    YouTube: {ministryYoutube}
-                  </span>
-
-                </div>
-
-                {/* PHONE NUMBERS */}
-
-                <div
-                  className="
-                    mt-1.5
-                    flex
-                    items-center
-                    justify-center
-                    gap-3
-                    text-[clamp(7px,0.72vw,10px)]
+                    mt-[0.4cqw]
+                    max-w-full
+                    overflow-hidden
+                    text-ellipsis
+                    whitespace-nowrap
                     text-white/85
                   "
+                  style={{
+                    fontSize:
+                      "clamp(8px, 0.4cqw, 6px)",
+                    lineHeight: 1,
+                  }}
                 >
+                  🌐 sharon-prayer-fellowship.vercel.app
+                </p>
 
-                  <span>
-                    ☎ {ministryPhone1}
-                  </span>
+                {/* SOCIAL MEDIA */}
 
-                  <span className="text-[#e3b52d]">
+                <p
+                  className="
+                    mt-[0.25cqw]
+                    max-w-full
+                    overflow-hidden
+                    text-ellipsis
+                    whitespace-nowrap
+                    text-white/75
+                  "
+                  style={{
+                    fontSize:
+                      "clamp(7px, 0.38cqw, 5.8px)",
+                    lineHeight: 1,
+                  }}
+                >
+                  Instagram: {ministryInstagram}
+
+                  <span className="mx-[0.6cqw] text-[#e3b52d]">
                     •
                   </span>
 
-                  <span>
-                    {ministryPhone2}
-                  </span>
-
-                </div>
-
-                {/* TAGLINE */}
-
-                <p className="mt-1.5 text-[6px] font-semibold uppercase tracking-[0.35em] text-white/70">
-                  Share God&apos;s Word
+                  YouTube: {ministryYoutube}
                 </p>
 
-                <Heart
-                  size={10}
-                  className="mt-1 fill-[#e3b52d] text-[#e3b52d]"
-                />
+                {/* PHONE */}
+
+                <p
+                  className="
+                    mt-[0.25cqw]
+                    whitespace-nowrap
+                    text-white/75
+                  "
+                  style={{
+                    fontSize:
+                      "clamp(7px, 0.39cqw, 5.8px)",
+                    lineHeight: 1,
+                  }}
+                >
+                  ☎ {ministryPhone1}
+
+                  <span className="mx-[0.7cqw] text-[#e3b52d]">
+                    •
+                  </span>
+
+                  {ministryPhone2}
+                </p>
 
               </div>
 
