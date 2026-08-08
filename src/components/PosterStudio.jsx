@@ -1,5 +1,11 @@
-import { useRef, useState } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+
 import html2canvas from "html2canvas-pro";
+
 import {
   ArrowLeft,
   Download,
@@ -52,8 +58,21 @@ function PosterStudio({ onBack, devotional }) {
       "మన పరిస్థితులు మారినా దేవునిపై విశ్వాసం మారకూడదు. ఆయనను నమ్మి వేసే ప్రతి అడుగు మనలను తన చిత్తానికి దగ్గర చేస్తుంది."
   );
 
-  const [showReflection, setShowReflection] = useState(true);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [showReflection, setShowReflection] =
+    useState(true);
+
+  const [isDownloading, setIsDownloading] =
+    useState(false);
+
+  /* =======================================================
+     TEXT FIT REFS
+  ======================================================= */
+
+  const reflectionBoxRef = useRef(null);
+  const reflectionTextRef = useRef(null);
+
+  const verseBoxRef = useRef(null);
+  const verseContentRef = useRef(null);
 
   /* =======================================================
      TELUGU DETECTION
@@ -69,153 +88,689 @@ function PosterStudio({ onBack, devotional }) {
     containsTelugu(reflection);
 
   /* =======================================================
-     REFLECTION FONT SIZE
+     REFLECTION TEXT FITTING
+
+     Reflection gets the larger content area.
+
+     Long reflection:
+     - automatically reduces font size
+     - never overlaps footer
+     - never escapes its box
   ======================================================= */
 
-  const getReflectionFontSize = (text = "") => {
-    const length = text.trim().length;
+  const fitReflectionText = () => {
+    const box = reflectionBoxRef.current;
+    const textElement = reflectionTextRef.current;
 
-    if (length <= 60) {
-      return isTelugu
-        ? "clamp(10px, 1.05cqw, 17px)"
-        : "clamp(9px, 1cqw, 15px)";
+    if (
+      !box ||
+      !textElement ||
+      !showReflection
+    ) {
+      return;
     }
 
-    if (length <= 100) {
-      return isTelugu
-        ? "clamp(9.5px, 0.95cqw, 16px)"
-        : "clamp(8.5px, 0.9cqw, 14px)";
+    const boxStyle =
+      getComputedStyle(box);
+
+    const paddingTop =
+      parseFloat(boxStyle.paddingTop) || 0;
+
+    const paddingBottom =
+      parseFloat(boxStyle.paddingBottom) || 0;
+
+    const paddingLeft =
+      parseFloat(boxStyle.paddingLeft) || 0;
+
+    const paddingRight =
+      parseFloat(boxStyle.paddingRight) || 0;
+
+    const availableHeight =
+      box.clientHeight -
+      paddingTop -
+      paddingBottom;
+
+    const availableWidth =
+      box.clientWidth -
+      paddingLeft -
+      paddingRight;
+
+    if (
+      availableHeight <= 0 ||
+      availableWidth <= 0
+    ) {
+      return;
     }
 
-    if (length <= 150) {
-      return isTelugu
-        ? "clamp(9px, 0.88cqw, 15px)"
-        : "clamp(8px, 0.82cqw, 13px)";
+    /* =====================================================
+       FONT LIMITS
+
+       Reflection can be larger than Bible verse.
+    ===================================================== */
+
+    const maxSize = isTelugu
+      ? 16
+      : 15;
+
+    const minSize = isTelugu
+      ? 6.5
+      : 6;
+
+    let low = minSize;
+    let high = maxSize;
+    let bestSize = minSize;
+
+    /* =====================================================
+       RESET TEXT
+    ===================================================== */
+
+    textElement.style.height = "auto";
+    textElement.style.maxHeight = "none";
+    textElement.style.overflow = "visible";
+
+    /* =====================================================
+       BINARY SEARCH
+    ===================================================== */
+
+    for (let i = 0; i < 14; i++) {
+      const size =
+        (low + high) / 2;
+
+      textElement.style.fontSize =
+        `${size}px`;
+
+      textElement.style.lineHeight =
+        "1.30";
+
+      void textElement.offsetHeight;
+
+      const requiredHeight =
+        textElement.scrollHeight;
+
+      const requiredWidth =
+        textElement.scrollWidth;
+
+      const fitsHeight =
+        requiredHeight <=
+        availableHeight + 1;
+
+      const fitsWidth =
+        requiredWidth <=
+        availableWidth + 1;
+
+      if (
+        fitsHeight &&
+        fitsWidth
+      ) {
+        bestSize = size;
+        low = size;
+      } else {
+        high = size;
+      }
     }
 
-    if (length <= 200) {
-      return isTelugu
-        ? "clamp(8.5px, 0.82cqw, 14px)"
-        : "clamp(7.5px, 0.76cqw, 12px)";
-    }
+    /* =====================================================
+       APPLY FINAL SIZE
+    ===================================================== */
 
-    if (length <= 260) {
-      return isTelugu
-        ? "clamp(8px, 0.76cqw, 13px)"
-        : "clamp(7px, 0.7cqw, 11px)";
-    }
+    textElement.style.fontSize =
+      `${bestSize}px`;
 
-    return isTelugu
-      ? "clamp(7.5px, 0.68cqw, 12px)"
-      : "clamp(6.5px, 0.62cqw, 10px)";
+    textElement.style.lineHeight =
+      "1.30";
+
+    textElement.style.height =
+      "auto";
+
+    textElement.style.maxHeight =
+      "100%";
+
+    textElement.style.overflow =
+      "hidden";
   };
 
   /* =======================================================
-     BIBLE VERSE FONT SIZE
+     BIBLE VERSE + REFERENCE FITTING
+
+     IMPORTANT:
+
+     Verse is intentionally smaller than reflection.
+
+     Verse:
+       Maximum = 12px
+       Minimum = 6.5px
+
+     Reference:
+       Maximum = 8px
+       Minimum = 5px
+
+     Verse and reference have completely
+     separate areas so they cannot overlap.
   ======================================================= */
 
-  const getVerseFontSize = (text = "") => {
-    const length = text.trim().length;
+  const fitVerseText = () => {
+    const box = verseBoxRef.current;
+    const content = verseContentRef.current;
 
-    if (length <= 30) {
-      return isTelugu
-        ? "clamp(11px, 1.15cqw, 18px)"
-        : "clamp(11px, 1.2cqw, 19px)";
+    if (!box || !content) {
+      return;
     }
 
-    if (length <= 50) {
-      return isTelugu
-        ? "clamp(10px, 1.05cqw, 17px)"
-        : "clamp(10px, 1.1cqw, 17px)";
+    const verseWrapper =
+      content.querySelector("[data-verse-wrapper]");
+
+    const verseElement =
+      content.querySelector("[data-verse-text]");
+
+    const referenceElement =
+      content.querySelector("[data-reference-text]");
+
+    if (!verseWrapper || !verseElement) {
+      return;
     }
 
-    if (length <= 75) {
-      return isTelugu
-        ? "clamp(9.5px, 0.96cqw, 16px)"
-        : "clamp(9px, 1cqw, 16px)";
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT use the current flex child's height as the
+     * measurement source. The flex layout can change its
+     * height while we are trying different font sizes.
+     *
+     * Instead:
+     *
+     * 1. Measure the reference first.
+     * 2. Reserve the reference height.
+     * 3. Calculate the exact remaining height for the verse.
+     * 4. Measure the verse against that fixed area.
+     * 5. Apply the final font size.
+     *
+     * This makes the verse auto-fit reliably.
+     */
+
+    const contentStyle =
+      window.getComputedStyle(content);
+
+    const gapSize =
+      parseFloat(contentStyle.gap) || 0;
+
+    const availableWidth =
+      verseWrapper.clientWidth;
+
+    const totalContentHeight =
+      content.clientHeight;
+
+    if (
+      availableWidth <= 0 ||
+      totalContentHeight <= 0
+    ) {
+      return;
     }
 
-    if (length <= 105) {
-      return isTelugu
-        ? "clamp(9px, 0.88cqw, 15px)"
-        : "clamp(8.5px, 0.92cqw, 15px)";
+    /* =====================================================
+       FONT LIMITS
+    ===================================================== */
+
+    const MAX_VERSE_SIZE = isTelugu ? 14 : 15;
+    const MIN_VERSE_SIZE = isTelugu ? 5.5 : 6;
+
+    const MAX_REFERENCE_SIZE = isTelugu ? 8 : 8;
+    const MIN_REFERENCE_SIZE = isTelugu ? 4.5 : 5;
+
+    /* =====================================================
+       MEASUREMENT ELEMENT CREATOR
+    ===================================================== */
+
+    const createMeasurementElement = ({
+      sourceElement,
+      width,
+      fontSize,
+      lineHeight,
+    }) => {
+      const sourceStyle =
+        window.getComputedStyle(sourceElement);
+
+      const element =
+        document.createElement("div");
+
+      element.textContent =
+        sourceElement.textContent;
+
+      element.style.position =
+        "fixed";
+
+      element.style.left =
+        "-100000px";
+
+      element.style.top =
+        "0";
+
+      element.style.visibility =
+        "hidden";
+
+      element.style.pointerEvents =
+        "none";
+
+      element.style.boxSizing =
+        "border-box";
+
+      element.style.width =
+        `${Math.max(width, 1)}px`;
+
+      element.style.height =
+        "auto";
+
+      element.style.minHeight =
+        "0";
+
+      element.style.maxHeight =
+        "none";
+
+      element.style.padding =
+        "0";
+
+      element.style.margin =
+        "0";
+
+      element.style.border =
+        "0";
+
+      element.style.whiteSpace =
+        "pre-line";
+
+      element.style.overflow =
+        "visible";
+
+      element.style.overflowWrap =
+        "anywhere";
+
+      element.style.wordBreak =
+        "break-word";
+
+      element.style.fontFamily =
+        sourceStyle.fontFamily;
+
+      element.style.fontWeight =
+        sourceStyle.fontWeight;
+
+      element.style.fontStyle =
+        sourceStyle.fontStyle;
+
+      element.style.letterSpacing =
+        sourceStyle.letterSpacing;
+
+      element.style.textTransform =
+        sourceStyle.textTransform;
+
+      element.style.fontSize =
+        `${fontSize}px`;
+
+      element.style.lineHeight =
+        `${lineHeight}`;
+
+      document.body.appendChild(element);
+
+      return element;
+    };
+
+    /* =====================================================
+       MEASURE REFERENCE FIRST
+    ===================================================== */
+
+    let referenceHeight = 0;
+    let finalReferenceSize =
+      MAX_REFERENCE_SIZE;
+
+    if (
+      referenceElement &&
+      referenceElement.textContent.trim()
+    ) {
+      const referenceWidth =
+        referenceElement.parentElement?.clientWidth ||
+        availableWidth;
+
+      const referenceMeasurement =
+        createMeasurementElement({
+          sourceElement: referenceElement,
+          width: referenceWidth,
+          fontSize: MAX_REFERENCE_SIZE,
+          lineHeight: 1.15,
+        });
+
+      let low =
+        MIN_REFERENCE_SIZE;
+
+      let high =
+        MAX_REFERENCE_SIZE;
+
+      let best =
+        MIN_REFERENCE_SIZE;
+
+      for (let i = 0; i < 15; i++) {
+        const size =
+          (low + high) / 2;
+
+        referenceMeasurement.style.fontSize =
+          `${size}px`;
+
+        referenceMeasurement.style.lineHeight =
+          "1.15";
+
+        void referenceMeasurement.offsetHeight;
+
+        const height =
+          referenceMeasurement.scrollHeight;
+
+        /*
+         * Reference should normally stay on one or
+         * two lines. We use its natural height here.
+         */
+        if (height > 0) {
+          best = size;
+          low = size;
+        } else {
+          high = size;
+        }
+      }
+
+      finalReferenceSize = best;
+
+      referenceMeasurement.style.fontSize =
+        `${finalReferenceSize}px`;
+
+      referenceMeasurement.style.lineHeight =
+        "1.15";
+
+      void referenceMeasurement.offsetHeight;
+
+      referenceHeight =
+        referenceMeasurement.scrollHeight;
+
+      referenceMeasurement.remove();
     }
 
-    if (length <= 140) {
-      return isTelugu
-        ? "clamp(8.5px, 0.82cqw, 14px)"
-        : "clamp(8px, 0.84cqw, 14px)";
+    /* =====================================================
+       CALCULATE EXACT VERSE HEIGHT
+    ===================================================== */
+
+    /*
+     * content.clientHeight is the actual inside height of
+     * the verse box.
+     *
+     * The reference occupies its own height.
+     * The margin/gap between verse and reference is also
+     * reserved.
+     */
+
+    const verseAvailableHeight =
+      Math.max(
+        1,
+        totalContentHeight -
+          referenceHeight -
+          gapSize
+      );
+
+    /* =====================================================
+       LOCK VERSE AREA TO THE CALCULATED HEIGHT
+    ===================================================== */
+
+    verseWrapper.style.flex =
+      "none";
+
+    verseWrapper.style.height =
+      `${verseAvailableHeight}px`;
+
+    verseWrapper.style.minHeight =
+      "0";
+
+    verseWrapper.style.maxHeight =
+      `${verseAvailableHeight}px`;
+
+    verseWrapper.style.overflow =
+      "hidden";
+
+    /* =====================================================
+       CREATE UNCONSTRAINED VERSE MEASUREMENT
+    ===================================================== */
+
+    const verseMeasurement =
+      createMeasurementElement({
+        sourceElement: verseElement,
+        width: availableWidth,
+        fontSize: MAX_VERSE_SIZE,
+        lineHeight: 1.22,
+      });
+
+    /* =====================================================
+       FIND LARGEST VERSE FONT THAT FITS
+    ===================================================== */
+
+    let low =
+      MIN_VERSE_SIZE;
+
+    let high =
+      MAX_VERSE_SIZE;
+
+    let best =
+      MIN_VERSE_SIZE;
+
+    for (let i = 0; i < 20; i++) {
+      const size =
+        (low + high) / 2;
+
+      verseMeasurement.style.fontSize =
+        `${size}px`;
+
+      verseMeasurement.style.lineHeight =
+        "1.22";
+
+      void verseMeasurement.offsetHeight;
+
+      const requiredHeight =
+        verseMeasurement.scrollHeight;
+
+      const fits =
+        requiredHeight <=
+        verseAvailableHeight + 0.5;
+
+      if (fits) {
+        best = size;
+        low = size;
+      } else {
+        high = size;
+      }
     }
 
-    if (length <= 180) {
-      return isTelugu
-        ? "clamp(8px, 0.76cqw, 13px)"
-        : "clamp(7.5px, 0.78cqw, 13px)";
-    }
+    verseMeasurement.remove();
 
-    if (length <= 230) {
-      return isTelugu
-        ? "clamp(7.5px, 0.7cqw, 12px)"
-        : "clamp(7px, 0.72cqw, 12px)";
-    }
+    /* =====================================================
+       APPLY FINAL VERSE SIZE
+    ===================================================== */
 
-    return isTelugu
-      ? "clamp(7px, 0.64cqw, 11px)"
-      : "clamp(6.5px, 0.68cqw, 11px)";
+    verseElement.style.fontSize =
+      `${best}px`;
+
+    verseElement.style.lineHeight =
+      "1.22";
+
+    verseElement.style.width =
+      "100%";
+
+    verseElement.style.height =
+      "auto";
+
+    verseElement.style.maxHeight =
+      `${verseAvailableHeight}px`;
+
+    verseElement.style.overflow =
+      "hidden";
+
+    verseElement.style.display =
+      "block";
+
+    /* =====================================================
+       APPLY FINAL REFERENCE SIZE
+    ===================================================== */
+
+    if (referenceElement) {
+      referenceElement.style.fontSize =
+        `${finalReferenceSize}px`;
+
+      referenceElement.style.lineHeight =
+        "1.15";
+
+      referenceElement.style.width =
+        "100%";
+
+      referenceElement.style.height =
+        "auto";
+
+      referenceElement.style.maxHeight =
+        "100%";
+
+      referenceElement.style.overflow =
+        "hidden";
+    }
   };
 
   /* =======================================================
-     BIBLE REFERENCE FONT SIZE
+     RUN TEXT FITTING
   ======================================================= */
 
-  const getReferenceFontSize = (text = "") => {
-    const length = text.trim().length;
-
-    if (length <= 15) {
-      return isTelugu
-        ? "clamp(6px, 0.7cqw, 10px)"
-        : "clamp(6px, 0.75cqw, 11px)";
+  const runTextFit = async () => {
+    try {
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+    } catch (error) {
+      console.warn(
+        "Font loading check failed:",
+        error
+      );
     }
 
-    if (length <= 25) {
-      return isTelugu
-        ? "clamp(5.7px, 0.66cqw, 9px)"
-        : "clamp(5.7px, 0.7cqw, 10px)";
-    }
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        resolve();
+      });
+    });
 
-    if (length <= 35) {
-      return isTelugu
-        ? "clamp(5.3px, 0.61cqw, 8.5px)"
-        : "clamp(5.3px, 0.65cqw, 9px)";
-    }
-
-    if (length <= 45) {
-      return isTelugu
-        ? "clamp(5px, 0.57cqw, 8px)"
-        : "clamp(5px, 0.61cqw, 8.5px)";
-    }
-
-    return isTelugu
-      ? "clamp(4.6px, 0.53cqw, 7.5px)"
-      : "clamp(4.6px, 0.57cqw, 8px)";
+    fitReflectionText();
+    fitVerseText();
   };
+
+  /* =======================================================
+     REFIT WHEN CONTENT CHANGES
+  ======================================================= */
+
+  useLayoutEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (cancelled) {
+        return;
+      }
+
+      await runTextFit();
+
+      if (cancelled) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        if (cancelled) {
+          return;
+        }
+
+        fitReflectionText();
+        fitVerseText();
+      });
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    title,
+    verse,
+    reference,
+    reflection,
+    showReflection,
+    isTelugu,
+  ]);
+
+  /* =======================================================
+     REFIT ON WINDOW RESIZE
+  ======================================================= */
+
+  useLayoutEffect(() => {
+    let resizeTimer;
+
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+
+      resizeTimer = setTimeout(() => {
+        runTextFit();
+      }, 80);
+    };
+
+    window.addEventListener(
+      "resize",
+      handleResize
+    );
+
+    return () => {
+      clearTimeout(resizeTimer);
+
+      window.removeEventListener(
+        "resize",
+        handleResize
+      );
+    };
+  }, [
+    showReflection,
+    isTelugu,
+  ]);
 
   /* =======================================================
      DOWNLOAD POSTER
   ======================================================= */
 
   const downloadPoster = async () => {
-    if (!posterRef.current || isDownloading) return;
+    if (
+      !posterRef.current ||
+      isDownloading
+    ) {
+      return;
+    }
 
     setIsDownloading(true);
 
     try {
+      /* Wait for fonts */
       if (document.fonts?.ready) {
         await document.fonts.ready;
       }
 
+      /* Refit before capture */
+      await runTextFit();
+
+      /* Wait another frame */
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+
+      /* ===================================================
+         WAIT FOR IMAGES
+      =================================================== */
+
       const images =
-        posterRef.current.querySelectorAll("img");
+        posterRef.current.querySelectorAll(
+          "img"
+        );
 
       await Promise.all(
         Array.from(images).map((img) => {
@@ -230,37 +785,58 @@ function PosterStudio({ onBack, devotional }) {
         })
       );
 
+      /* Rendering delay */
       await new Promise((resolve) =>
-        setTimeout(resolve, 500)
+        setTimeout(resolve, 400)
       );
 
-      const canvas = await html2canvas(
-        posterRef.current,
-        {
-          scale: 3,
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: null,
-          logging: false,
-          imageTimeout: 15000,
-        }
-      );
+      /* ===================================================
+         CREATE CANVAS
+      =================================================== */
+
+      const canvas =
+        await html2canvas(
+          posterRef.current,
+          {
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: null,
+            logging: false,
+            imageTimeout: 15000,
+          }
+        );
+
+      /* ===================================================
+         DOWNLOAD
+      =================================================== */
 
       canvas.toBlob((blob) => {
         if (!blob) {
           setIsDownloading(false);
-          alert("Unable to create the poster image.");
+
+          alert(
+            "Unable to create the poster image."
+          );
+
           return;
         }
 
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        const url =
+          URL.createObjectURL(blob);
+
+        const link =
+          document.createElement("a");
 
         link.href = url;
-        link.download = "daily-bread-august.png";
+
+        link.download =
+          "daily-bread-august.png";
 
         document.body.appendChild(link);
+
         link.click();
+
         document.body.removeChild(link);
 
         setTimeout(() => {
@@ -269,6 +845,7 @@ function PosterStudio({ onBack, devotional }) {
 
         setIsDownloading(false);
       }, "image/png");
+
     } catch (error) {
       console.error(
         "Poster download failed:",
@@ -288,28 +865,74 @@ function PosterStudio({ onBack, devotional }) {
   ======================================================= */
 
   return (
-    <div className="min-h-screen bg-[#eee7dd] text-[#2c211a]">
+    <div
+      className="
+        min-h-screen
+        bg-[#eee7dd]
+        text-[#2c211a]
+      "
+    >
 
       {/* =====================================================
           HEADER
       ===================================================== */}
 
-      <header className="sticky top-0 z-50 border-b border-[#ded3c5] bg-[#fffdfa]/95 backdrop-blur">
+      <header
+        className="
+          sticky
+          top-0
+          z-50
+          border-b
+          border-[#ded3c5]
+          bg-[#fffdfa]/95
+          backdrop-blur
+        "
+      >
 
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-5">
+        <div
+          className="
+            mx-auto
+            flex
+            h-16
+            max-w-7xl
+            items-center
+            justify-between
+            px-4
+            sm:px-5
+          "
+        >
+
+          {/* BACK */}
 
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm font-medium text-[#654331]"
+            className="
+              flex
+              items-center
+              gap-2
+              text-sm
+              font-medium
+              text-[#654331]
+            "
           >
+
             <ArrowLeft size={18} />
 
             <span className="hidden sm:inline">
               Back
             </span>
+
           </button>
 
-          <div className="flex items-center gap-2">
+          {/* TITLE */}
+
+          <div
+            className="
+              flex
+              items-center
+              gap-2
+            "
+          >
 
             <Sparkles
               size={17}
@@ -318,17 +941,34 @@ function PosterStudio({ onBack, devotional }) {
 
             <div className="text-center">
 
-              <h1 className="font-serif text-base font-semibold sm:text-lg">
+              <h1
+                className="
+                  font-serif
+                  text-base
+                  font-semibold
+                  sm:text-lg
+                "
+              >
                 Poster Studio
               </h1>
 
-              <p className="text-[8px] uppercase tracking-[0.28em] text-[#9a8978] sm:text-[9px]">
+              <p
+                className="
+                  text-[8px]
+                  uppercase
+                  tracking-[0.28em]
+                  text-[#9a8978]
+                  sm:text-[9px]
+                "
+              >
                 August Daily Bread
               </p>
 
             </div>
 
           </div>
+
+          {/* DOWNLOAD */}
 
           <button
             onClick={downloadPoster}
@@ -389,17 +1029,49 @@ function PosterStudio({ onBack, devotional }) {
             CONTROLS
         =================================================== */}
 
-        <aside className="order-2 space-y-5 lg:order-1">
+        <aside
+          className="
+            order-2
+            space-y-5
+            lg:order-1
+          "
+        >
 
           {/* =================================================
               BACKGROUND
           ================================================= */}
 
-          <section className="rounded-3xl border border-[#e5dbcf] bg-white p-5 shadow-sm">
+          <section
+            className="
+              rounded-3xl
+              border
+              border-[#e5dbcf]
+              bg-white
+              p-5
+              shadow-sm
+            "
+          >
 
-            <div className="mb-4 flex items-center gap-3">
+            <div
+              className="
+                mb-4
+                flex
+                items-center
+                gap-3
+              "
+            >
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5ede1]">
+              <div
+                className="
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-[#f5ede1]
+                "
+              >
 
                 <Sparkles
                   size={17}
@@ -410,11 +1082,21 @@ function PosterStudio({ onBack, devotional }) {
 
               <div>
 
-                <h2 className="text-sm font-semibold">
+                <h2
+                  className="
+                    text-sm
+                    font-semibold
+                  "
+                >
                   Monthly Background
                 </h2>
 
-                <p className="text-[11px] text-[#9a8979]">
+                <p
+                  className="
+                    text-[11px]
+                    text-[#9a8979]
+                  "
+                >
                   Change this every month
                 </p>
 
@@ -422,21 +1104,48 @@ function PosterStudio({ onBack, devotional }) {
 
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-[#e4d9cc]">
+            <div
+              className="
+                overflow-hidden
+                rounded-2xl
+                border
+                border-[#e4d9cc]
+              "
+            >
 
               <img
                 src={monthlyBackground}
                 alt="August background"
-                className="h-36 w-full object-cover"
+                className="
+                  h-36
+                  w-full
+                  object-cover
+                "
               />
 
-              <div className="bg-[#fcfaf7] p-3">
+              <div
+                className="
+                  bg-[#fcfaf7]
+                  p-3
+                "
+              >
 
-                <p className="text-sm font-semibold">
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                  "
+                >
                   Aug.png
                 </p>
 
-                <p className="mt-1 text-[11px] text-[#978879]">
+                <p
+                  className="
+                    mt-1
+                    text-[11px]
+                    text-[#978879]
+                  "
+                >
                   src/assets/backgrounds/Aug.png
                 </p>
 
@@ -450,19 +1159,53 @@ function PosterStudio({ onBack, devotional }) {
               POSTER CONTENT
           ================================================= */}
 
-          <section className="rounded-3xl border border-[#e5dbcf] bg-white p-5 shadow-sm">
+          <section
+            className="
+              rounded-3xl
+              border
+              border-[#e5dbcf]
+              bg-white
+              p-5
+              shadow-sm
+            "
+          >
 
-            <h2 className="font-serif text-xl font-semibold">
+            <h2
+              className="
+                font-serif
+                text-xl
+                font-semibold
+              "
+            >
               Poster Content
             </h2>
 
-            <p className="mb-5 mt-1 text-xs text-[#988879]">
+            <p
+              className="
+                mb-5
+                mt-1
+                text-xs
+                text-[#988879]
+              "
+            >
               Edit the content shown on the poster.
             </p>
 
-            {/* TITLE */}
+            {/* =================================================
+                TITLE
+            ================================================= */}
 
-            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#765a42]">
+            <label
+              className="
+                mb-2
+                block
+                text-[11px]
+                font-semibold
+                uppercase
+                tracking-[0.12em]
+                text-[#765a42]
+              "
+            >
               Title
             </label>
 
@@ -484,13 +1227,29 @@ function PosterStudio({ onBack, devotional }) {
                 py-3
                 text-sm
                 outline-none
-                ${isTelugu ? "font-potti text-lg" : ""}
+                ${
+                  isTelugu
+                    ? "font-potti text-lg"
+                    : ""
+                }
               `}
             />
 
-            {/* BIBLE VERSE */}
+            {/* =================================================
+                BIBLE VERSE
+            ================================================= */}
 
-            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#765a42]">
+            <label
+              className="
+                mb-2
+                block
+                text-[11px]
+                font-semibold
+                uppercase
+                tracking-[0.12em]
+                text-[#765a42]
+              "
+            >
               Bible Verse
             </label>
 
@@ -513,13 +1272,29 @@ function PosterStudio({ onBack, devotional }) {
                 text-sm
                 leading-6
                 outline-none
-                ${isTelugu ? "font-potti text-lg" : ""}
+                ${
+                  isTelugu
+                    ? "font-potti text-lg"
+                    : ""
+                }
               `}
             />
 
-            {/* REFERENCE */}
+            {/* =================================================
+                REFERENCE
+            ================================================= */}
 
-            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#765a42]">
+            <label
+              className="
+                mb-2
+                block
+                text-[11px]
+                font-semibold
+                uppercase
+                tracking-[0.12em]
+                text-[#765a42]
+              "
+            >
               Bible Reference
             </label>
 
@@ -539,15 +1314,36 @@ function PosterStudio({ onBack, devotional }) {
                 py-3
                 text-sm
                 outline-none
-                ${isTelugu ? "font-potti text-lg" : ""}
+                ${
+                  isTelugu
+                    ? "font-potti text-lg"
+                    : ""
+                }
               `}
             />
 
-            {/* REFLECTION */}
+            {/* =================================================
+                REFLECTION
+            ================================================= */}
 
-            <div className="mb-2 flex items-center justify-between">
+            <div
+              className="
+                mb-2
+                flex
+                items-center
+                justify-between
+              "
+            >
 
-              <label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#765a42]">
+              <label
+                className="
+                  text-[11px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.12em]
+                  text-[#765a42]
+                "
+              >
                 Reflection
               </label>
 
@@ -557,7 +1353,11 @@ function PosterStudio({ onBack, devotional }) {
                     !showReflection
                   )
                 }
-                className="text-xs font-semibold text-[#a16d30]"
+                className="
+                  text-xs
+                  font-semibold
+                  text-[#a16d30]
+                "
               >
                 {showReflection
                   ? "Hide"
@@ -587,7 +1387,11 @@ function PosterStudio({ onBack, devotional }) {
                   text-sm
                   leading-6
                   outline-none
-                  ${isTelugu ? "font-potti text-lg" : ""}
+                  ${
+                    isTelugu
+                      ? "font-potti text-lg"
+                      : ""
+                  }
                 `}
               />
             )}
@@ -657,7 +1461,10 @@ function PosterStudio({ onBack, devotional }) {
 
             {/* =================================================
                 MAIN POSTER AREA
+
                 84%
+
+                FOOTER = 16%
             ================================================= */}
 
             <div
@@ -671,7 +1478,9 @@ function PosterStudio({ onBack, devotional }) {
               "
             >
 
-              {/* LEFT DARK PANEL */}
+              {/* =================================================
+                  LEFT DARK PANEL
+              ================================================= */}
 
               <div
                 className="
@@ -688,7 +1497,9 @@ function PosterStudio({ onBack, devotional }) {
                 "
               />
 
-              {/* CENTER BLEND */}
+              {/* =================================================
+                  CENTER BLEND
+              ================================================= */}
 
               <div
                 className="
@@ -781,7 +1592,13 @@ function PosterStudio({ onBack, devotional }) {
                     Daily Promise
                   </p>
 
-                  <div className="mt-[1.8cqw] flex items-center">
+                  <div
+                    className="
+                      mt-[1.8cqw]
+                      flex
+                      items-center
+                    "
+                  >
 
                     <div
                       className="
@@ -792,7 +1609,10 @@ function PosterStudio({ onBack, devotional }) {
                     />
 
                     <span
-                      className="mx-[1cqw] text-[#e2b52d]"
+                      className="
+                        mx-[1cqw]
+                        text-[#e2b52d]
+                      "
                       style={{
                         fontSize:
                           "clamp(6px, 0.7cqw, 11px)",
@@ -834,7 +1654,12 @@ function PosterStudio({ onBack, devotional }) {
                     TITLE
                 ================================================= */}
 
-                <div className="mt-[3.6cqw] shrink-0">
+                <div
+                  className="
+                    mt-[3.6cqw]
+                    shrink-0
+                  "
+                >
 
                   <h1
                     className={`
@@ -849,7 +1674,7 @@ function PosterStudio({ onBack, devotional }) {
                     `}
                     style={{
                       fontSize: isTelugu
-                        ? "clamp(20px, 2.5cqw, 40px)"
+                        ? "clamp(15px, 2.5cqw, 40px)"
                         : "clamp(20px, 2.8cqw, 43px)",
                       lineHeight: 1.08,
                     }}
@@ -872,7 +1697,12 @@ function PosterStudio({ onBack, devotional }) {
                     TODAY'S PROMISE
                 ================================================= */}
 
-                <div className="mt-[2cqw] shrink-0">
+                <div
+                  className="
+                    mt-[2cqw]
+                    shrink-0
+                  "
+                >
 
                   <span
                     className="
@@ -881,7 +1711,7 @@ function PosterStudio({ onBack, devotional }) {
                       border
                       border-[#e0b42c]
                       px-[1.4cqw]
-                      py-[0.55cqw]
+                      py-[1cqw]
                       font-bold
                       uppercase
                       tracking-[0.06em]
@@ -899,123 +1729,205 @@ function PosterStudio({ onBack, devotional }) {
                 </div>
 
                 {/* =================================================
-                    REFLECTION
-                ================================================= */}
+                    CONTENT AREA
 
-                {showReflection && (
-                  <div
-                    className="
-                      mt-[1.5cqw]
-                      min-h-0
-                      shrink
-                      overflow-hidden
-                      rounded-[1.2cqw]
-                      border-[0.14cqw]
-                      border-[#c29a3d]
-                      bg-black/65
-                      px-[2.5cqw]
-                      py-[1.7cqw]
-                    "
-                  >
+                    Reflection = 62.5%
+                    Bible = 37.5%
 
-                    <p
-                      className={`
-                        break-words
-                        whitespace-pre-line
-                        text-white
-                        ${
-                          isTelugu
-                            ? "font-potti"
-                            : "font-serif"
-                        }
-                      `}
-                      style={{
-                        fontSize:
-                          getReflectionFontSize(
-                            reflection
-                          ),
-                        lineHeight: 1.38,
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {reflection}
-                    </p>
-
-                  </div>
-                )}
-
-                {/* =================================================
-                    BIBLE VERSE + REFERENCE
+                    The Bible section is deliberately smaller.
                 ================================================= */}
 
                 <div
-                  className="
-                    mt-[1.4cqw]
+                  className={`
+                    mt-[1.5cqw]
                     min-h-0
-                    shrink
-                    overflow-hidden
-                    rounded-[1.2cqw]
-                    border-[0.14cqw]
-                    border-[#9d7a32]
-                    bg-black/65
-                    px-[2.4cqw]
-                    py-[1.5cqw]
-                  "
+                    flex-1
+                    grid
+                    gap-[1.2cqw]
+                    ${
+                      showReflection
+                        ? "grid-rows-[1.25fr_0.75fr]"
+                        : "grid-rows-[1fr]"
+                    }
+                  `}
                 >
 
-                  {/* VERSE */}
+                  {/* =================================================
+                      REFLECTION BOX
+                  ================================================= */}
 
-                  <p
-                    className={`
-                      break-words
-                      whitespace-pre-line
-                      text-white
-                      ${
-                        isTelugu
-                          ? "font-potti"
-                          : "font-serif"
-                      }
-                    `}
-                    style={{
-                      fontSize:
-                        getVerseFontSize(verse),
-                      lineHeight: 1.28,
-                      overflowWrap: "anywhere",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    “{verse}”
-                  </p>
-
-                  {/* REFERENCE */}
-
-                  {reference.trim() && (
-                    <p
-                      className={`
-                        mt-[0.8cqw]
-                        break-words
-                        whitespace-normal
-                        font-semibold
-                        text-[#e5bd35]
-                        ${
-                          isTelugu
-                            ? "font-potti"
-                            : ""
-                        }
-                      `}
-                      style={{
-                        fontSize:
-                          getReferenceFontSize(
-                            reference
-                          ),
-                        lineHeight: 1.15,
-                        overflowWrap: "anywhere",
-                        wordBreak: "break-word",
-                      }}
+                  {showReflection ? (
+                    <div
+                      ref={reflectionBoxRef}
+                      className="
+                        min-h-0
+                        overflow-hidden
+                        rounded-[1.2cqw]
+                        border-[0.14cqw]
+                        border-[#c29a3d]
+                        bg-black/65
+                        px-[2.5cqw]
+                        py-[1.6cqw]
+                      "
                     >
-                      — {reference}
-                    </p>
-                  )}
+
+                      <div
+                        ref={reflectionTextRef}
+                        className={`
+                          h-full
+                          min-h-0
+                          w-full
+                          break-words
+                          whitespace-pre-line
+                          text-white
+                          ${
+                            isTelugu
+                              ? "font-potti"
+                              : "font-serif"
+                          }
+                        `}
+                        style={{
+                          fontSize: "16px",
+                          lineHeight: 1.30,
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-word",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {reflection}
+                      </div>
+
+                    </div>
+                  ) : null}
+
+                  {/* =================================================
+                      BIBLE VERSE + REFERENCE
+
+                      IMPORTANT:
+
+                      Verse and reference are separated.
+
+                      Verse:
+                        flex-1
+
+                      Reference:
+                        shrink-0
+
+                      This prevents overlap.
+                  ================================================= */}
+
+                  <div
+                    ref={verseBoxRef}
+                    className="
+                      min-h-0
+                      overflow-hidden
+                      rounded-[1.2cqw]
+                      border-[0.14cqw]
+                      border-[#9d7a32]
+                      bg-black/65
+                      px-[2.4cqw]
+                      py-[1.5cqw]
+                    "
+                  >
+
+                    <div
+                      ref={verseContentRef}
+                      className="
+                        flex
+                        h-full
+                        min-h-0
+                        w-full
+                        flex-col
+                        overflow-hidden
+                      "
+                    >
+
+                      {/* =================================================
+                          VERSE AREA
+                      ================================================= */}
+
+                      <div
+                        data-verse-wrapper
+                        className="
+                          min-h-0
+                          w-full
+                          flex-1
+                          overflow-hidden
+                        "
+                      >
+
+                        <p
+                          data-verse-text
+                          className={`
+                            m-0
+                            break-words
+                            whitespace-pre-line
+                            text-white
+                            ${
+                              isTelugu
+                                ? "font-potti"
+                                : "font-serif"
+                            }
+                          `}
+                          style={{
+                            fontSize: "7.5px",
+                            lineHeight: 1,
+                            overflowWrap: "anywhere",
+                            wordBreak: "break-word",
+                            overflow: "hidden",
+                          }}
+                        >
+                          “{verse}”
+                        </p>
+
+                      </div>
+
+                      {/* =================================================
+                          REFERENCE AREA
+                      ================================================= */}
+
+                      {reference.trim() && (
+                        <div
+                          className="
+                            mt-[0.8cqw]
+                            shrink-0
+                            max-w-full
+                            overflow-hidden
+                          "
+                        >
+
+                          <p
+                            data-reference-text
+                            className={`
+                              m-0
+                              break-words
+                              whitespace-pre-line
+                              font-semibold
+                              text-[#e5bd35]
+                              ${
+                                isTelugu
+                                  ? "font-potti"
+                                  : ""
+                              }
+                            `}
+                            style={{
+                              fontSize: "8px",
+                              lineHeight: 1.15,
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                              maxWidth: "100%",
+                              overflow: "hidden",
+                            }}
+                          >
+                            — {reference}
+                          </p>
+
+                        </div>
+                      )}
+
+                    </div>
+
+                  </div>
 
                 </div>
 
@@ -1058,7 +1970,8 @@ function PosterStudio({ onBack, devotional }) {
 
             {/* =================================================
                 FOOTER
-                16%
+
+                FIXED 16%
             ================================================= */}
 
             <div
@@ -1156,13 +2069,20 @@ function PosterStudio({ onBack, devotional }) {
                     lineHeight: 1,
                   }}
                 >
+
                   {fatherName}
 
-                  <span className="mx-[0.7cqw] text-[#e3b52d]">
+                  <span
+                    className="
+                      mx-[0.7cqw]
+                      text-[#e3b52d]
+                    "
+                  >
                     &
                   </span>
 
                   {motherName}
+
                 </p>
 
                 {/* WEBSITE */}
@@ -1202,13 +2122,20 @@ function PosterStudio({ onBack, devotional }) {
                     lineHeight: 1,
                   }}
                 >
+
                   Instagram: {ministryInstagram}
 
-                  <span className="mx-[0.6cqw] text-[#e3b52d]">
+                  <span
+                    className="
+                      mx-[0.6cqw]
+                      text-[#e3b52d]
+                    "
+                  >
                     •
                   </span>
 
                   YouTube: {ministryYoutube}
+
                 </p>
 
                 {/* PHONE */}
@@ -1225,13 +2152,20 @@ function PosterStudio({ onBack, devotional }) {
                     lineHeight: 1,
                   }}
                 >
+
                   ☎ {ministryPhone1}
 
-                  <span className="mx-[0.7cqw] text-[#e3b52d]">
+                  <span
+                    className="
+                      mx-[0.7cqw]
+                      text-[#e3b52d]
+                    "
+                  >
                     •
                   </span>
 
                   {ministryPhone2}
+
                 </p>
 
               </div>
